@@ -1,0 +1,70 @@
+// src/services/recommendationService.js
+import InvestorProfile from "../models/InvestorProfile.js";
+import StartupProfile from "../models/StartupProfile.js"; // assuming exists
+import User from "../models/User.js";
+import ProfileEmbedding from "../models/ProfileEmbedding.js"; // will create if not exists
+import { getEmbedding } from "../utils/embedding.js";
+import cosineSimilarity from "cosine-similarity";
+
+/**
+ * Pull relevant fields from profiles to build a text representation.
+ * For investors we use firmName, investorType, industries, fundingStages, bio.
+ * For startups we could use name, description, industry, stage, etc.
+ */
+function buildProfileText(profile) {
+    const parts = [];
+    if (profile.firmName) parts.push(profile.firmName);
+    if (profile.investorType) parts.push(profile.investorType);
+    if (Array.isArray(profile.industries)) parts.push(...profile.industries);
+    if (Array.isArray(profile.fundingStages)) parts.push(...profile.fundingStages);
+    if (profile.bio) parts.push(profile.bio);
+    return parts.join(" ");
+}
+
+/**
+ * Generate embeddings for all profiles and store them in `profileembeddings` collection.
+ * This is a one‑time job; you can run it via a script.
+ */
+export async function generateAllEmbeddings() {
+    // Clear existing embeddings
+    await ProfileEmbedding.deleteMany({});
+
+    const investors = await InvestorProfile.find();
+    const startups = await StartupProfile.find();
+    const all = [...investors, ...startups];
+
+    const bulkOps = [];
+    for (const p of all) {
+        const text = buildProfileText(p);
+        const embedding = await getEmbedding(text);
+        bulkOps.push({
+            insertOne: {
+                document: {
+                    profileId: p._id,
+                    profileType: p instanceof InvestorProfile ? "investor" : "startup",
+                    embedding,
+                },
+            },
+        });
+    }
+    if (bulkOps.length) await ProfileEmbedding.bulkWrite(bulkOps);
+    return bulkOps.length;
+}
+
+/**
+ * Find similar profiles for a given userId (or profileId).
+ * @param {string} profileId - The profile whose recommendations we want.
+ * @param {number} topK - Number of recommendations.
+ */
+export async function findSimilarProfiles(profileId, topK = 5) {
+    const target = await ProfileEmbedding.findOne({ profileId });
+    if (!target) return [];
+
+    const all = await ProfileEmbedding.find({ profileId: { $ne: profileId } });
+    const scores = all.map((doc) => {
+        const sim = cosineSimilarity(target.embedding, doc.embedding);
+        return { profileId: doc.profileId, profileType: doc.profileType, score: sim };
+    });
+    scores.sort((a, b) => b.score - a.score);
+    return scores.slice(0, topK);
+}

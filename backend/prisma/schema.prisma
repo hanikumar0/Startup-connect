@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STARTUP
+  INVESTOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  phone         String   @unique
+  password      String
+  name          String
+  role          Role     @default(STARTUP)
+  isEmailVerified Boolean @default(false)
+  isPhoneVerified Boolean @default(false)
+  
+  // Verification Data
+  aadhaarLast4  String?
+  panNumber     String?
+  gstNumber     String?
+  udyamNumber   String?
+  dpiitNumber   String?
+  cinNumber     String?
+  
+  verificationStatus VerificationStatus @default(PENDING)
+  
+  // Timestamps
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  startupProfile  StartupProfile?
+  investorProfile InvestorProfile?
+  messagesSent    Message[]       @relation("SentMessages")
+  messagesReceived Message[]      @relation("ReceivedMessages")
+  meetingStarter  Meeting[]       @relation("MeetingStarter")
+  meetingInvitee  Meeting[]       @relation("MeetingInvitee")
+}
+
+model StartupProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  companyName    String
+  industry        String
+  description     String   @db.Text
+  fundingStage    String
+  fundingRequired Float    @default(0)
+  pitchDeckUrl    String?
+  website         String?
+  logoUrl         String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model InvestorProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  firmName        String?
+  investorType    String   // Angel, VC, etc.
+  industries      String[] // Array of industry interests
+  minInvestment   Float    @default(0)
+  maxInvestment   Float    @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String   @db.Text
+  senderId    String
+  receiverId  String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Meeting {
+  id          String   @id @default(uuid())
+  title       String
+  startTime   DateTime
+  endTime     DateTime
+  initiatorId String
+  guestId     String
+  initiator   User     @relation("MeetingStarter", fields: [initiatorId], references: [id])
+  guest       User     @relation("MeetingInvitee", fields: [guestId], references: [id])
+  status      String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  meetingLink String?
+  createdAt   DateTime @default(now())
+}

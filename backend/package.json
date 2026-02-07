@@ -1,0 +1,57 @@
+{
+  "name": "startup-connect-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Startup Connect (Web + Mobile)",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "embeddings": "node scripts/generate_embeddings.js"
+  },
+  "keywords": [
+    "startup",
+    "investor",
+    "mern",
+    "node",
+    "express",
+    "api"
+  ],
+  "author": "Startup Connect Team",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.984.0",
+    "@aws-sdk/s3-request-presigner": "^3.984.0",
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "connect-mongo": "^6.0.0",
+    "cors": "^2.8.5",
+    "cosine-similarity": "^1.0.1",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.2.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "ioredis": "^5.8.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.0.0",
+    "mongoose": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^7.0.12",
+    "openai": "^6.15.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-linkedin-oauth2": "^2.0.0",
+    "pino": "^10.1.0",
+    "redis": "^5.10.0",
+    "socket.io": "^4.8.2",
+    "twilio": "^5.11.1",
+    "uuid": "^9.0.1",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
