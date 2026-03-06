@@ -13,11 +13,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Startup Connect | Verified Marketplace",
+  title: "Startup Connect | Verified Network",
   description: "An AI-powered marketplace connecting startups with the right investors for smarter, faster growth.",
+  manifest: "/manifest.json",
+  openGraph: {
+    title: "Startup Connect Network",
+    description: "Launch your next round with verified investors and top startups across the globe.",
+    url: "https://startupconnect.com",
+    siteName: "Startup Connect",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Startup Connect Marketplace",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Startup Connect Network",
+    description: "Match with investors instantly using our proprietary generative AI scoring engine.",
+    images: ["/og-image.jpg"],
+  },
 };
 
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -36,6 +60,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Toaster position="bottom-right" richColors />
         </ThemeProvider>
       </body>
     </html>

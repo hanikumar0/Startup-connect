@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CommandPalette } from "@/components/CommandPalette";
 import { apiFetch } from "@/lib/api";
 
 interface NavItem {
@@ -181,7 +182,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#020617] border-r border-slate-200 dark:border-slate-800 transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+                className={`fixed inset-y-0 left-0 z-50 w-64 bg-white/70 dark:bg-[#020617]/70 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-800/50 transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
             >
                 <div className="flex flex-col h-full">
                     <div className="p-6">
@@ -228,7 +229,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Main Content */}
             <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : ""}`}>
-                <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8">
+                <header className="sticky top-0 z-40 bg-white/60 dark:bg-[#020617]/60 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 sm:px-6 lg:px-8 shadow-sm">
                     <div className="flex h-16 items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Button
@@ -239,14 +240,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             >
                                 {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                             </Button>
-                            <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 group focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-                                <Search className="h-4 w-4" />
+                            <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 bg-white/50 dark:bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-200/60 dark:border-slate-800/60 group focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-sm">
+                                <Search className="h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                                 <input
                                     type="text"
-                                    placeholder="Search platform..."
-                                    className="bg-transparent border-none focus:outline-none w-48 lg:w-64"
+                                    placeholder="Search..."
+                                    className="bg-transparent border-none focus:outline-none w-48 text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
                                     value={globalSearch}
                                     onChange={(e) => setGlobalSearch(e.target.value)}
+                                    // Let globalSearch just act visually or redirect, Cmd+K normally handles the overlay
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" && globalSearch.trim()) {
                                             router.push(`/dashboard/discover?q=${encodeURIComponent(globalSearch.trim())}`);
@@ -254,6 +256,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         }
                                     }}
                                 />
+                                <kbd className="hidden lg:inline-flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-1.5 font-mono text-[10px] font-medium text-slate-500 dark:text-slate-400 ml-2">
+                                    ⌘K
+                                </kbd>
                             </div>
                         </div>
 
@@ -337,6 +342,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
                     )}
                 </div>
+
+                {/* Command Palette Mount */}
+                <CommandPalette />
 
                 {/* Real-time Toast Notification (5 seconds) */}
                 {activeToast && (

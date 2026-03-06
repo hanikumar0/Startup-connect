@@ -37,9 +37,17 @@ router.get(
 
         const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-        // Construct final URL
+        // Only pass essential user info (not full document) to avoid URL length issues
+        const safeUser = encodeURIComponent(JSON.stringify({
+            id: req.user._id,
+            name: req.user.name,
+            email: req.user.email,
+            role: req.user.role,
+            isProfileCompleted: req.user.isProfileCompleted,
+        }));
+
         const separator = redirectTarget.includes("?") ? "&" : "?";
-        const finalUrl = `${redirectTarget}${separator}token=${token}&user=${JSON.stringify(req.user)}`;
+        const finalUrl = `${redirectTarget}${separator}token=${token}&user=${safeUser}`;
 
         res.redirect(finalUrl);
     }
@@ -52,7 +60,14 @@ router.get(
     passport.authenticate("linkedin", { failureRedirect: "/login", session: false }),
     (req, res) => {
         const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-        res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3000"}/login?token=${token}&user=${JSON.stringify(req.user)}`);
+        const safeUser = encodeURIComponent(JSON.stringify({
+            id: req.user._id,
+            name: req.user.name,
+            email: req.user.email,
+            role: req.user.role,
+            isProfileCompleted: req.user.isProfileCompleted,
+        }));
+        res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3000"}/login?token=${token}&user=${safeUser}`);
     }
 );
 

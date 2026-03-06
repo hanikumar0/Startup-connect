@@ -32,8 +32,10 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState("");
     const [isLoading, setIsLoading] = useState(true);
+    const [partnerTyping, setPartnerTyping] = useState(false);
     const socketRef = useRef<Socket | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const getConversationId = (id1: string, id2: string) => [id1, id2].sort().join("_");
 
@@ -66,9 +68,22 @@ export default function ChatPage() {
         });
 
         // Listen for read status updates
-        socketRef.current.on("messages_read", ({ conversationId }: { conversationId: string }) => {
+        socketRef.current.on("messages_marked_read", ({ conversationId }: { conversationId: string }) => {
             if (selectedPartner && conversationId === getConversationId(user.id, selectedPartner.id)) {
                 setMessages((prev) => prev.map(m => ({ ...m, isRead: true })));
+            }
+        });
+
+        // Listen for typing events
+        socketRef.current.on("user_typing", ({ userId }: { userId: string }) => {
+            if (selectedPartner && userId === selectedPartner.id) {
+                setPartnerTyping(true);
+            }
+        });
+
+        socketRef.current.on("user_stop_typing", ({ userId }: { userId: string }) => {
+            if (selectedPartner && userId === selectedPartner.id) {
+                setPartnerTyping(false);
             }
         });
 
@@ -79,6 +94,7 @@ export default function ChatPage() {
 
     useEffect(() => {
         if (selectedPartner && user) {
+            setPartnerTyping(false);
             const convId = getConversationId(user.id, selectedPartner.id);
             socketRef.current?.emit("join_room", convId);
             fetchMessages(convId);
@@ -132,7 +148,21 @@ export default function ChatPage() {
         };
 
         socketRef.current.emit("send_message", messageData);
+        socketRef.current.emit("stop_typing", { conversationId: convId, userId: user.id });
         setInputText("");
+    };
+
+    const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputText(e.target.value);
+        if (!socketRef.current || !selectedPartner || !user) return;
+
+        const convId = getConversationId(user.id, selectedPartner.id);
+        socketRef.current.emit("typing", { conversationId: convId, userId: user.id });
+
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+            socketRef.current?.emit("stop_typing", { conversationId: convId, userId: user.id });
+        }, 2000);
     };
 
     useEffect(() => {
@@ -235,6 +265,15 @@ export default function ChatPage() {
                                         </div>
                                     );
                                 })}
+                                {partnerTyping && (
+                                    <div className="flex justify-start animate-in fade-in duration-300">
+                                        <div className="bg-slate-100 text-slate-500 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1.5">
+                                            <div className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                                            <div className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                                            <div className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </ScrollArea>
 
@@ -243,7 +282,7 @@ export default function ChatPage() {
                                 <Input
                                     placeholder="Type your message..."
                                     value={inputText}
-                                    onChange={(e) => setInputText(e.target.value)}
+                                    onChange={handleTyping}
                                     className="h-12 border-slate-200 bg-white shadow-sm focus-visible:ring-indigo-500"
                                 />
                                 <Button type="submit" size="icon" className="h-12 w-12 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 shrink-0">

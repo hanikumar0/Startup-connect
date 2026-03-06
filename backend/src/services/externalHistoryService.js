@@ -1,47 +1,65 @@
 import OpenAI from "openai";
 
 /**
- * Service to research external history of startups and investors using AI
+ * Service to research external history of startups and investors using AI.
+ * Includes fallback response when OpenAI is unavailable.
  */
 export const researchEntityHistory = async (entityName, entityType, founderName = "") => {
-    try {
-        const openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
+    // Try OpenAI-powered analysis
+    if (process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.startsWith("your_")) {
+        try {
+            const openai = new OpenAI({
+                apiKey: process.env.OPENAI_API_KEY,
+                timeout: 30000, // 30 second timeout
+            });
 
-        const prompt = `
-            You are a professional Venture Capital Due Diligence Analyst. 
-            Research and provide a detailed historical report for the following ${entityType}:
-            Name: ${entityName}
-            Founder/Key Person: ${founderName}
+            const prompt = `
+                You are a professional Venture Capital Due Diligence Analyst. 
+                Research and provide a detailed historical report for the following ${entityType}:
+                Name: ${entityName}
+                Founder/Key Person: ${founderName}
 
-            Please provide the report in JSON format with the following structure:
-            {
-                "trustScore": (Number, 1-100 based on perceived credibility),
-                "summary": "A 3-sentence summary of their external reputation and impact.",
-                "pastFunding": [
-                    { "year": "YYYY", "round": "Seed/A/B", "amount": "$ amount", "source": "Lead investor or source" }
-                ],
-                "founderTrackRecord": [
-                    { "company": "Past Co Name", "role": "Role", "outcome": "Exit/Pivot/Closure" }
-                ],
-                "verifiedExternalLinks": ["URL 1", "URL 2"],
-                "riskAssessment": "Low/Medium/High",
-                "riskNotes": "Brief explanation of risks if any."
-            }
+                Please provide the report in JSON format with the following structure:
+                {
+                    "trustScore": (Number, 1-100 based on perceived credibility),
+                    "summary": "A 3-sentence summary of their external reputation and impact.",
+                    "pastFunding": [
+                        { "year": "YYYY", "round": "Seed/A/B", "amount": "$ amount", "source": "Lead investor or source" }
+                    ],
+                    "founderTrackRecord": [
+                        { "company": "Past Co Name", "role": "Role", "outcome": "Exit/Pivot/Closure" }
+                    ],
+                    "verifiedExternalLinks": ["URL 1", "URL 2"],
+                    "riskAssessment": "Low/Medium/High",
+                    "riskNotes": "Brief explanation of risks if any."
+                }
 
-            Note: If you don't have real-time data for this specific entity, provide a realistic analysis based on general industry knowledge of entities with similar profiles.
-        `;
+                Note: If you don't have real-time data for this specific entity, provide a realistic analysis based on general industry knowledge.
+            `;
 
-        const response = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [{ role: "user", content: prompt }],
-            response_format: { type: "json_object" }
-        });
+            const response = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [{ role: "user", content: prompt }],
+                response_format: { type: "json_object" }
+            });
 
-        return JSON.parse(response.choices[0].message.content);
-    } catch (error) {
-        console.error("AI History Research Error:", error);
-        throw new Error("Unable to perform deep history audit at this time.");
+            return JSON.parse(response.choices[0].message.content);
+        } catch (error) {
+            console.warn("⚠️ OpenAI History Research unavailable:", error.message);
+        }
     }
+
+    // ─── Fallback: Static due diligence template ───
+    return {
+        trustScore: 50,
+        summary: `Due diligence report for ${entityName} (${entityType}). AI-powered deep analysis is temporarily unavailable. Manual review is recommended.`,
+        pastFunding: [],
+        founderTrackRecord: founderName ? [
+            { company: entityName, role: "Founder", outcome: "Active" }
+        ] : [],
+        verifiedExternalLinks: [],
+        riskAssessment: "Medium",
+        riskNotes: "Automated analysis unavailable. Please conduct manual due diligence.",
+        isFallback: true
+    };
 };

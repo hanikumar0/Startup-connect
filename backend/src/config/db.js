@@ -6,22 +6,38 @@ const connectDB = async () => {
       dbName: "startup_connect",
       tls: true,
       serverSelectionTimeoutMS: 10000,
-      family: 4, // Force IPv4
+      socketTimeoutMS: 45000,
+      family: 4,
     });
 
     // Disable buffering if we lose connection
     mongoose.set('bufferCommands', false);
 
+    // Connection event handlers for production monitoring
+    mongoose.connection.on("error", (err) => {
+      console.error("❌ MongoDB runtime error:", err.message);
+    });
+
+    mongoose.connection.on("disconnected", () => {
+      console.warn("⚠️ MongoDB disconnected. Attempting reconnect...");
+    });
+
+    mongoose.connection.on("reconnected", () => {
+      console.log("✅ MongoDB reconnected successfully");
+    });
+
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    return conn;
   } catch (error) {
     if (error.code === 'ENOTFOUND') {
       console.error("❌ MongoDB DNS Error: Could not resolve the connection string.");
-      console.error("💡 Tip: Your network might be blocking SRV records. Try using the standard 'mongodb://' format instead of 'mongodb+srv://' or check your internet connection.");
-    } else if (error.message.includes('SSL') || error.message.includes('TLS')) {
+      console.error("💡 Tip: Your network might be blocking SRV records.");
+    } else if (error.message?.includes('SSL') || error.message?.includes('TLS')) {
       console.error("❌ SSL/TLS Connection Error detected.");
       console.error("💡 Tip: Check if your IP is whitelisted in MongoDB Atlas.");
     }
     console.error("❌ MongoDB connection failed:", error.message);
+    throw error; // Re-throw so server.js can handle it
   }
 };
 

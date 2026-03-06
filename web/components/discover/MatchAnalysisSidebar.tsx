@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, BrainCircuit, Target, Zap, ShieldCheck, AlertCircle, TrendingUp } from "lucide-react";
+import { X, BrainCircuit, Target, Zap, ShieldCheck, AlertCircle, TrendingUp, Lock, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { apiFetch } from "@/lib/api";
 
 interface MatchAnalysisSidebarProps {
     isOpen: boolean;
@@ -13,6 +15,40 @@ interface MatchAnalysisSidebarProps {
 }
 
 export function MatchAnalysisSidebar({ isOpen, onClose, profile }: MatchAnalysisSidebarProps) {
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && profile?.userId?._id) {
+            fetchDocs(profile.userId._id);
+        }
+    }, [isOpen, profile]);
+
+    const fetchDocs = async (startupId: string) => {
+        setIsLoadingDocs(true);
+        try {
+            const res = await apiFetch(`/api/vdr/startup/${startupId}`);
+            const data = await res.json();
+            if (data.success) {
+                setDocuments(data.documents);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoadingDocs(false);
+        }
+    };
+
+    const requestAccess = async (docId: string) => {
+        try {
+            const res = await apiFetch(`/api/vdr/request/${docId}`, { method: "POST" });
+            const data = await res.json();
+            if (data.success) {
+                setDocuments(prev => prev.map(d => d._id === docId ? { ...d, requestStatus: "PENDING" } : d));
+            }
+        } catch (error) { }
+    }
+
     if (!profile) return null;
 
     return (
@@ -104,6 +140,50 @@ export function MatchAnalysisSidebar({ isOpen, onClose, profile }: MatchAnalysis
                                         </p>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* VDR Access */}
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Virtual Data Room</h3>
+                                {isLoadingDocs ? (
+                                    <div className="h-20 bg-slate-50 animate-pulse rounded-2xl" />
+                                ) : documents.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {documents.map((doc) => (
+                                            <div key={doc._id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600">
+                                                        <FileText size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-900">{doc.name}</p>
+                                                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{doc.category}</p>
+                                                    </div>
+                                                </div>
+                                                {!doc.hasAccess ? (
+                                                    doc.requestStatus === "PENDING" ? (
+                                                        <Badge className="bg-amber-50 text-amber-600 border-none px-3 py-1">Pending Approval</Badge>
+                                                    ) : doc.requestStatus === "REJECTED" ? (
+                                                        <Badge className="bg-red-50 text-red-600 border-none px-3 py-1">Access Denied</Badge>
+                                                    ) : (
+                                                        <Button size="sm" variant="outline" className="h-8 gap-2 text-indigo-600 border-indigo-100 hover:bg-indigo-50" onClick={() => requestAccess(doc._id)}>
+                                                            <Lock size={12} /> Request Access
+                                                        </Button>
+                                                    )
+                                                ) : (
+                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                                                        <Download size={16} />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-6 text-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
+                                        <ShieldCheck size={24} className="mx-auto text-slate-300 mb-2" />
+                                        <p className="text-xs text-slate-500 font-medium">No documents uploaded to VDR yet.</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Action Button */}

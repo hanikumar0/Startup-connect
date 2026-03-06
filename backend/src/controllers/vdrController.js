@@ -1,23 +1,31 @@
 import VDRDocument from "../models/VDRDocument.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
+import axios from "axios";
+
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
 
 export const uploadVDRDocument = async (req, res) => {
     try {
         const { name, category, url, isRestricted, size, fileType } = req.body;
         const userId = req.user.id;
 
+        if (!name || !category || !url) {
+            return res.status(400).json({ message: "Name, category, and URL are required" });
+        }
+
         let aiAnalysis = { summary: "Analyzing...", riskScore: 0, clauses: [] };
         try {
-            const aiResponse = await axios.post("http://127.0.0.1:8000/analyze-document", {
+            const aiResponse = await axios.post(`${AI_SERVICE_URL}/analyze-document`, {
                 doc_name: name,
                 doc_content: `Analyzing ${name} in category ${category}. Highly confidential.`
-            });
+            }, { timeout: 10000 });
+
             if (aiResponse.data.success) {
                 aiAnalysis = aiResponse.data.analysis;
             }
         } catch (error) {
-            console.error("AI Analysis failed:", error.message);
+            console.warn("⚠️ AI Analysis unavailable (using defaults):", error.message);
         }
 
         const doc = await VDRDocument.create({
@@ -28,15 +36,16 @@ export const uploadVDRDocument = async (req, res) => {
             isRestricted,
             size,
             fileType,
-            authorizedUsers: [userId], // Owner always has access
+            authorizedUsers: [userId],
             aiSummary: aiAnalysis.summary,
-            riskScore: aiAnalysis.risk_score || aiAnalysis.riskScore,
-            keyClauses: aiAnalysis.clauses
+            riskScore: aiAnalysis.risk_score || aiAnalysis.riskScore || 0,
+            keyClauses: aiAnalysis.clauses || []
         });
 
         res.status(201).json({ success: true, document: doc });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error("VDR Upload Error:", error.message);
+        res.status(500).json({ message: "Failed to upload document" });
     }
 };
 
@@ -60,13 +69,14 @@ export const getStartupVDR = async (req, res) => {
                 fileType: doc.fileType,
                 hasAccess,
                 requestStatus: request ? request.status : null,
-                url: hasAccess ? doc.url : null // Hide URL if no access
+                url: hasAccess ? doc.url : null
             };
         });
 
         res.status(200).json({ success: true, documents: processedDocs });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error("Get VDR Error:", error.message);
+        res.status(500).json({ message: "Failed to fetch documents" });
     }
 };
 
@@ -84,7 +94,6 @@ export const requestVDRAccess = async (req, res) => {
         doc.accessRequests.push({ user: userId, status: "PENDING" });
         await doc.save();
 
-        // Notify owner
         const requester = await User.findById(userId);
         await Notification.create({
             recipient: doc.owner,
@@ -92,20 +101,25 @@ export const requestVDRAccess = async (req, res) => {
             type: "SYSTEM",
             title: "VDR Access Request",
             message: `${requester.name} requested access to ${doc.name}`,
-            link: "/dashboard/settings" // Or VDR management page
+            link: "/dashboard/settings"
         });
 
         res.status(200).json({ success: true, message: "Request sent" });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error("VDR Access Request Error:", error.message);
+        res.status(500).json({ message: "Failed to send access request" });
     }
 };
 
 export const handleAccessRequest = async (req, res) => {
     try {
         const { documentId, requestId } = req.params;
-        const { status } = req.body; // APPROVED or REJECTED
+        const { status } = req.body;
         const userId = req.user.id;
+
+        if (!["APPROVED", "REJECTED"].includes(status)) {
+            return res.status(400).json({ message: "Status must be APPROVED or REJECTED" });
+        }
 
         const doc = await VDRDocument.findOne({ _id: documentId, owner: userId });
         if (!doc) return res.status(404).json({ message: "Document not found or unauthorized" });
@@ -122,19 +136,19 @@ export const handleAccessRequest = async (req, res) => {
 
         await doc.save();
 
-        // Notify requester
         await Notification.create({
             recipient: request.user,
             sender: userId,
             type: "SYSTEM",
             title: `VDR Access ${status}`,
             message: `Your request for ${doc.name} was ${status.toLowerCase()}.`,
-            link: `/dashboard/discover` // Should go to the startup profile
+            link: `/dashboard/discover`
         });
 
         res.status(200).json({ success: true, request });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error("Handle Access Request Error:", error.message);
+        res.status(500).json({ message: "Failed to process access request" });
     }
 };
 
@@ -143,6 +157,7 @@ export const getMyVDR = async (req, res) => {
         const documents = await VDRDocument.find({ owner: req.user.id });
         res.status(200).json({ success: true, documents });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error("Get My VDR Error:", error.message);
+        res.status(500).json({ message: "Failed to fetch your documents" });
     }
 };

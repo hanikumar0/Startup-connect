@@ -6,8 +6,11 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
-    "embeddings": "node scripts/generate_embeddings.js"
+    "start": "cross-env NODE_ENV=production node src/server.js",
+    "start:win": "set NODE_ENV=production&& node src/server.js",
+    "embeddings": "node scripts/generate_embeddings.js",
+    "setup-indexes": "node scripts/setup-indexes.js",
+    "validate": "node -e \"import('./src/config/env.js').then(() => import('./src/config/validate-env.js').then(m => m.validateEnvironment()))\""
   },
   "keywords": [
     "startup",
@@ -27,9 +30,11 @@
     "connect-mongo": "^6.0.0",
     "cors": "^2.8.5",
     "cosine-similarity": "^1.0.1",
+    "cross-env": "^10.1.0",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3",
     "express": "^4.19.2",
+    "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
