@@ -23,6 +23,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function TermSheetBuilder() {
+    const [deals, setDeals] = useState<any[]>([]);
+    const [selectedDealId, setSelectedDealId] = useState<string>("");
+    const [isLoading, setIsLoading] = useState(true);
+
     const [valuation, setValuation] = useState(5000000);
     const [investment, setInvestment] = useState(500000);
     const [exitValuation, setExitValuation] = useState(50000000);
@@ -30,6 +34,43 @@ export default function TermSheetBuilder() {
     const [capAmount, setCapAmount] = useState(3);
     const [optionPool, setOptionPool] = useState(10);
     const [futureDilution, setFutureDilution] = useState(0);
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                const [profileRes, dealsRes] = await Promise.all([
+                    apiFetch("/api/users/profile"),
+                    apiFetch("/api/deals")
+                ]);
+
+                const profileData = await profileRes.json();
+                const dealsData = await dealsRes.json();
+
+                if (dealsData.success && dealsData.deals.length > 0) {
+                    setDeals(dealsData.deals);
+                    const lastDeal = dealsData.deals[0];
+                    setSelectedDealId(lastDeal._id);
+                    setInvestment(lastDeal.amount || 500000);
+                } else if (profileData.success && profileData.profile?.fundingRequired) {
+                    setInvestment(profileData.profile.fundingRequired);
+                }
+            } catch (err) {
+                console.error("Failed to load real data:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadInitialData();
+    }, []);
+
+    const handleDealSelect = (dealId: string) => {
+        const deal = deals.find(d => d._id === dealId);
+        if (deal) {
+            setSelectedDealId(dealId);
+            setInvestment(deal.amount || 500000);
+        }
+    };
 
     const postMoney = useMemo(() => valuation + investment, [valuation, investment]);
     const investorOwnershipInitial = useMemo(() => (investment / postMoney) * 100, [investment, postMoney]);
@@ -99,8 +140,21 @@ export default function TermSheetBuilder() {
                         {/* Inputs Sidebar */}
                         <div className="lg:col-span-4 space-y-6">
                             <Card className="border-none shadow-sm h-full dark:bg-slate-900">
-                                <CardHeader>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0">
                                     <CardTitle className="text-lg">Economics</CardTitle>
+                                    {deals.length > 0 && (
+                                        <select
+                                            className="text-[10px] bg-slate-100 dark:bg-slate-800 border-none rounded-md px-2 py-1 font-bold outline-none cursor-pointer"
+                                            value={selectedDealId}
+                                            onChange={(e) => handleDealSelect(e.target.value)}
+                                        >
+                                            {deals.map((d: any) => (
+                                                <option key={d._id} value={d._id}>
+                                                    Deal: {d.investor?.name || "Active"}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                 </CardHeader>
                                 <CardContent className="space-y-8">
                                     <div className="space-y-4">

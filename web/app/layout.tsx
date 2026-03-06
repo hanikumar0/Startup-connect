@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"),
   title: "Startup Connect | Verified Network",
   description: "An AI-powered marketplace connecting startups with the right investors for smarter, faster growth.",
   openGraph: {
