@@ -20,11 +20,21 @@ const startServer = async () => {
     // Setup WebSockets
     setupSockets(server);
 
+    server.on("error", (e) => {
+      if (e.code === "EADDRINUSE") {
+        logger.error(`❌ Port ${PORT} is currently in use. Existing process must be cleared.`);
+        process.exit(1); // Exit so nodemon can rerun the predev cleanup
+      } else {
+        logger.error({ err: e }, "❌ Server encountered an error on start");
+        process.exit(1);
+      }
+    });
+
     server.listen(PORT, () => {
       logger.info(`✅ Server running on port ${PORT} [${process.env.NODE_ENV || "development"}]`);
     });
   } catch (error) {
-    logger.error({ err: error }, "❌ Failed to start server");
+    logger.error({ err: error }, "❌ Unexpected server crash during initialization");
     process.exit(1);
   }
 };

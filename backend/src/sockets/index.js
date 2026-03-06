@@ -14,7 +14,8 @@ const setupSockets = (server) => {
     const io = new Server(server, {
         cors: {
             origin: isProduction ? allowedOrigins : "*",
-            methods: ["GET", "POST"],
+            methods: ["GET", "POST", "OPTIONS"],
+            credentials: true
         },
         pingTimeout: 60000,
         pingInterval: 25000,

@@ -3,30 +3,49 @@ import Redis from "ioredis";
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 let redis;
 let isRedisAvailable = false;
+let hasLoggedRedisError = false;
+
+const MAX_RETRIES = 3;
 
 try {
     // For Redis Cloud/Managed services, we often need TLS and better retry logic
     const options = {
-        maxRetriesPerRequest: null,
+        maxRetriesPerRequest: 1,
         retryStrategy(times) {
-            const delay = Math.min(times * 50, 2000);
+            if (times > MAX_RETRIES) {
+                // Stop retrying after MAX_RETRIES attempts
+                if (!hasLoggedRedisError) {
+                    hasLoggedRedisError = true;
+                    console.warn(
+                        `⚠️ Redis unavailable after ${MAX_RETRIES} retries — using in-memory fallback. App will continue to work normally.`
+                    );
+                }
+                return null; // Stop reconnecting
+            }
+            const delay = Math.min(times * 500, 2000);
             return delay;
         },
         // Enable TLS if using rediss:// or cloud providers often require it
         tls: REDIS_URL.startsWith("rediss://") ? {} : undefined,
-        connectTimeout: 10000, // 10 seconds
+        connectTimeout: 5000, // 5 seconds
+        lazyConnect: false,
     };
 
     redis = new Redis(REDIS_URL, options);
 
     redis.on("connect", () => {
         isRedisAvailable = true;
+        hasLoggedRedisError = false;
         console.log("🚀 Redis connected successfully");
     });
 
     redis.on("error", (err) => {
         isRedisAvailable = false;
-        console.warn("⚠️ Redis connection issue (using fallback):", err.message);
+        if (!hasLoggedRedisError) {
+            hasLoggedRedisError = true;
+            console.warn("⚠️ Redis connection issue (using fallback):", err.message);
+        }
+        // Suppress repeated error logs
     });
 } catch (error) {
     console.error("❌ Redis initialization failed:", error);

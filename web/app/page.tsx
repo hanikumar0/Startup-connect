@@ -1,5 +1,11 @@
+"use client";
+
 import { Rocket, ShieldCheck, Zap, MessageSquare, Video, ArrowRight, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   return (

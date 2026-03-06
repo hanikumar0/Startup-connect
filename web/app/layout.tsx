@@ -15,7 +15,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Startup Connect | Verified Network",
   description: "An AI-powered marketplace connecting startups with the right investors for smarter, faster growth.",
-  manifest: "/manifest.json",
   openGraph: {
     title: "Startup Connect Network",
     description: "Launch your next round with verified investors and top startups across the globe.",

@@ -3,25 +3,67 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from contextlib import asynccontextmanager
 import uvicorn
 import time
 import logging
+import os
+import subprocess
 from engine import MatchingEngine
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("ai-service")
 
+# Load environment variables from the root project directory (1 level up)
+ROOT_ENV = os.path.join(os.path.dirname(__file__), "..", ".env")
+load_dotenv(ROOT_ENV, override=True)
+
+# ─── Port Cleanup ───
+def cleanup_port(port: int):
+    try:
+        if os.name == 'nt':
+            # Use netstat to find PID on port
+            cmd = f'netstat -ano | findstr :{port}'
+            output = subprocess.check_output(cmd, shell=True).decode()
+            for line in output.strip().split('\n'):
+                parts = line.strip().split()
+                if len(parts) > 4 and parts[1].endswith(f':{port}'):
+                    pid = parts[-1]
+                    if pid != '0' and pid != str(os.getpid()):
+                        log.info(f"🧹 Clearing zombie process {pid} on port {port}...")
+                        subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
+    except Exception:
+        pass # Port is likely free or taskkill failed silently
+
+# ─── Lifespan ───
+engine: Optional[MatchingEngine] = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global engine
+    log.info("🚀 Loading AI matching engine...")
+    try:
+        engine = MatchingEngine()
+        log.info("✅ AI engine loaded successfully.")
+    except Exception as e:
+        log.error(f"❌ Failed to load AI engine: {e}")
+        engine = None
+    yield
+    # Clean up (if needed)
+
 app = FastAPI(
     title="Startup Connect AI Service",
     version="1.0.0",
-    docs_url="/docs" if __name__ == "__main__" else None,  # Disable docs in production
+    docs_url="/docs" if __name__ == "__main__" else None,
+    lifespan=lifespan
 )
 
 # ─── CORS ───
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict in production via env
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,20 +88,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"success": False, "detail": "Internal server error. The AI service encountered an unexpected issue."}
     )
-
-# ─── Initialize Engine (preload model at startup) ───
-engine: Optional[MatchingEngine] = None
-
-@app.on_event("startup")
-async def startup_event():
-    global engine
-    log.info("🚀 Loading AI matching engine...")
-    try:
-        engine = MatchingEngine()
-        log.info("✅ AI engine loaded successfully.")
-    except Exception as e:
-        log.error(f"❌ Failed to load AI engine: {e}")
-        engine = None
 
 def get_engine() -> MatchingEngine:
     if engine is None:
@@ -129,4 +157,5 @@ async def analyze_pitch(request: PitchAnalysisRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
+    cleanup_port(8000)
     uvicorn.run(app, host="0.0.0.0", port=8000)

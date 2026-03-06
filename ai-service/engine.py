@@ -2,9 +2,8 @@ from sentence_transformers import SentenceTransformer, util
 import numpy as np
 import os
 from openai import OpenAI
-from dotenv import load_dotenv
+# Environment variables are managed by main.py
 
-load_dotenv()
 
 class MatchingEngine:
     def __init__(self, model_name='all-MiniLM-L6-v2'):

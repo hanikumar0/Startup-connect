@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
   },
 
   // Performance
-  reactStrictMode: true,
+  reactStrictMode: false,
   poweredByHeader: false, // Don't expose Next.js version
 };
 

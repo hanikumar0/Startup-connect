@@ -97,15 +97,12 @@ const apiLimiter = rateLimit({
   message: { message: "Too many requests, please try again later.", success: false },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use a key generator that works behind proxies
-  keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"] || "unknown",
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isProduction ? 20 : 100,
   message: { message: "Too many auth attempts, please try again later.", success: false },
-  keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"] || "unknown",
 });
 
 app.use("/api", apiLimiter);
