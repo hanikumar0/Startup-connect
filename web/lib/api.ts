@@ -1,3 +1,5 @@
+import { useAuthStore } from "./store";
+
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000; // 1 second
 
@@ -44,10 +46,10 @@ export async function apiFetch(
     options: RequestInit = {},
     retries: number = MAX_RETRIES
 ): Promise<Response> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
     const url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${endpoint}`;
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const { token } = useAuthStore.getState();
 
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -73,8 +75,7 @@ export async function apiFetch(
             const currentPath = window.location.pathname;
             if (!currentPath.startsWith("/login") && !currentPath.startsWith("/register")) {
                 console.warn("Session expired, redirecting to login...");
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
+                useAuthStore.getState().logout();
                 window.location.href = "/login?expired=true";
             }
         }

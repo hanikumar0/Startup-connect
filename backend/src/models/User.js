@@ -7,72 +7,48 @@ const userSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
-
         email: {
             type: String,
             required: true,
             unique: true,
             lowercase: true,
         },
-
-        phone: {
-            type: String,
-            unique: true,
-            sparse: true,
-        },
-
         password: {
             type: String,
             minlength: 6,
             select: false,
         },
-
-        googleId: {
-            type: String,
-            unique: true,
-            sparse: true,
-        },
-
-        linkedinId: {
-            type: String,
-            unique: true,
-            sparse: true,
-        },
-
         role: {
             type: String,
-            enum: ["STARTUP", "INVESTOR", "ADMIN"],
-            default: "STARTUP",
+            enum: ["startup", "investor", "superadmin", "moderator", "support"],
+            default: "startup",
         },
-
-        isEmailVerified: {
-            type: Boolean,
-            default: false,
-        },
-
-        isPhoneVerified: {
-            type: Boolean,
-            default: false,
-        },
-
-        // Verification Data
-        aadhaarLast4: { type: String, default: null },
-        panNumber: { type: String, default: null },
-        gstNumber: { type: String, default: null },
-        udyamNumber: { type: String, default: null },
-        dpiitNumber: { type: String, default: null },
-        cinNumber: { type: String, default: null },
-
-        verificationStatus: {
+        avatar: {
             type: String,
-            enum: ["PENDING", "VERIFIED", "REJECTED"],
-            default: "PENDING",
+            default: null,
         },
-
-        isProfileCompleted: {
+        provider: {
+            type: String,
+            enum: ["email", "google", "linkedin"],
+            default: "email",
+        },
+        isVerified: {
             type: Boolean,
             default: false,
         },
+        onboardingCompleted: {
+            type: Boolean,
+            default: false,
+        },
+        lastLogin: {
+            type: Date,
+            default: null,
+        },
+        status: {
+            type: String,
+            enum: ["active", "blocked"],
+            default: "active",
+        }
     },
     { timestamps: true }
 );

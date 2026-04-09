@@ -1,301 +1,400 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Rocket, Loader2, User, Building2, AlertCircle } from "lucide-react";
+import { Rocket, Loader2, AlertCircle, Building, Wallet, User, ShieldCheck, ChevronRight, Eye, EyeOff, Quote } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useAuthStore } from "@/lib/store";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export default function RegisterPage() {
     const router = useRouter();
+    const { setAuth } = useAuthStore();
     const [isLoading, setIsLoading] = useState(false);
-    const [role, setRole] = useState("startup");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [step, setStep] = useState(1); // 1: Details, 2: OTP
-    const [otp, setOtp] = useState("");
-    const [resendTimer, setResendTimer] = useState(0);
+    const [step, setStep] = useState(1);
+
     const [formData, setFormData] = useState({
         name: "",
-        countryCode: "+91",
-        phone: "",
         email: "",
         password: "",
+        confirmPassword: "",
+        role: "",
+        otp: ""
     });
 
-    useEffect(() => {
-        let interval: any;
-        if (resendTimer > 0) {
-            interval = setInterval(() => {
-                setResendTimer((prev) => prev - 1);
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [resendTimer]);
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, [e.target.id]: e.target.value });
+        setFormData({ ...formData, [e.target.id || e.target.name]: e.target.value });
         if (error) setError(null);
+    };
+
+    const handleRoleSelect = (role: string) => {
+        setFormData({ ...formData, role });
+        setError(null);
+    };
+
+    const handleSendOTP = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await apiFetch("/api/auth/send-otp", {
+                method: "POST",
+                body: JSON.stringify({ email: formData.email }),
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || "Failed to send OTP");
+            }
+            setStep(3);
+        } catch (err: any) {
+            setError(err.message || "Could not send verification code.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const fullPhone = `${formData.countryCode}${formData.phone}`;
-            const response = await apiFetch("/api/auth/send-otp", {
-                method: "POST",
-                body: JSON.stringify({ email: formData.email, phone: fullPhone }),
-            });
-
-            if (!response.ok) throw new Error("Failed to send OTP");
-
-            setStep(2); // Move to OTP step
-            setResendTimer(30); // Set 30s cooldown
-        } catch (err: any) {
-            setError(err.message || "Something went wrong.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleVerifyOtp = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            // Real API call to verify OTP
-            const verifyRes = await apiFetch("/api/auth/verify-otp", {
-                method: "POST",
-                body: JSON.stringify({ email: formData.email, otp }),
-            });
-
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) throw new Error(verifyData.message || "Invalid OTP");
-
-            // If OTP is correct, proceed with registration
-            const response = await apiFetch("/api/auth/register", {
-                method: "POST",
-                body: JSON.stringify({
-                    ...formData,
-                    phone: `${formData.countryCode}${formData.phone}`,
-                    role: role.toUpperCase(),
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Registration failed");
+        
+        if (step === 3) {
+            setIsLoading(true);
+            try {
+                const response = await apiFetch("/api/auth/register-verify", {
+                    method: "POST",
+                    body: JSON.stringify(formData),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Verification failed");
+                setAuth(data.user, data.token, data.refreshToken);
+                router.push("/onboarding");
+            } catch (err: any) {
+                setError(err.message || "Verification failed.");
+            } finally {
+                setIsLoading(false);
             }
-
-            localStorage.setItem("token", data.token);
-            localStorage.setItem("user", JSON.stringify(data.user));
-            router.push("/dashboard");
-        } catch (err: any) {
-            setError(err.message || "Registration failed.");
-        } finally {
-            setIsLoading(false);
+            return;
         }
+
+        if (!formData.role) {
+            setError("Please select your role.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            setError("Please enter a valid email address.");
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match.");
+            return;
+        }
+
+        handleSendOTP();
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 sm:px-6 lg:px-8">
-            <Card className="w-full max-w-xl border-none shadow-xl">
-                <CardHeader className="space-y-1 text-center">
-                    <div className="flex justify-center mb-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200">
-                            <Rocket className="h-6 w-6" />
-                        </div>
-                    </div>
-                    <CardTitle className="text-2xl font-bold tracking-tight">Create an Account</CardTitle>
-                    <CardDescription>
-                        Join the vetted community of founders and investors
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-6">
-                    {error && (
-                        <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg">
-                            <AlertCircle className="h-4 w-4" />
-                            {error}
-                        </div>
-                    )}
-                    {step === 1 ? (
-                        <>
-                            <Tabs defaultValue="startup" onValueChange={setRole} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2 p-1 bg-zinc-100 h-12">
-                                    <TabsTrigger value="startup" className="h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                        <Building2 className="mr-2 h-4 w-4" /> Startup
-                                    </TabsTrigger>
-                                    <TabsTrigger value="investor" className="h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                        <User className="mr-2 h-4 w-4" /> Investor
-                                    </TabsTrigger>
-                                </TabsList>
-                            </Tabs>
+        <div className="flex min-h-screen bg-background">
+            {/* Form Section */}
+            <div className="flex w-full flex-col justify-center lg:w-1/2 p-12 xl:p-24 bg-white dark:bg-zinc-950 transition-colors duration-700 relative z-10">
+                <div className="mx-auto w-full max-w-md">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.8 }}
+                        className="mb-12"
+                    >
+                        <Link href="/" className="inline-flex items-center gap-3 mb-10 group">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-primary text-white shadow-2xl shadow-primary/30 group-hover:scale-110 transition-transform">
+                                <Rocket className="h-6 w-6" />
+                            </div>
+                            <span className="text-2xl font-black italic tracking-tighter text-foreground uppercase group-hover:tracking-normal transition-all">Startup Connect</span>
+                        </Link>
+                        <h1 className="text-5xl font-black italic tracking-tighter text-foreground uppercase">Join Us.</h1>
+                        <p className="mt-4 text-lg font-bold text-muted-foreground italic">Connect with startups and investors today.</p>
+                    </motion.div>
 
-                            <form onSubmit={handleSubmit} className="grid gap-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="name">Full Name</Label>
+                    {error && (
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="mb-8 flex items-center gap-3 p-5 text-[11px] font-black uppercase italic tracking-widest text-red-500 glass border border-red-500/20 rounded-2xl animate-shake"
+                        >
+                            <AlertCircle className="h-5 w-5 shrink-0" />
+                            <span>{error}</span>
+                        </motion.div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                        <AnimatePresence mode="wait">
+                            {step === 1 ? (
+                                <motion.div
+                                    key="step1"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="space-y-6"
+                                >
+                                    <div className="space-y-3">
+                                        <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-[3px] text-muted-foreground italic ml-2">Name</Label>
                                         <Input
                                             id="name"
-                                            placeholder="John Doe"
+                                            placeholder="Your name"
                                             required
-                                            className="h-11 border-zinc-200"
+                                            className="h-14 rounded-2xl border-border bg-secondary/10 focus:bg-white dark:focus:bg-zinc-900 transition-all font-bold italic px-6 text-lg"
                                             value={formData.name}
                                             onChange={handleChange}
-                                            disabled={isLoading}
                                         />
                                     </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="phone">Phone Number</Label>
-                                        <div className="flex gap-2">
-                                            <select
-                                                id="countryCode"
-                                                className="w-[90px] h-11 border-zinc-200 rounded-md bg-zinc-50 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                value={formData.countryCode}
-                                                onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
-                                            >
-                                                <option value="+91">+91 (IN)</option>
-                                                <option value="+1">+1 (US)</option>
-                                                <option value="+44">+44 (UK)</option>
-                                                <option value="+971">+971 (UAE)</option>
-                                                <option value="+65">+65 (SG)</option>
-                                            </select>
+                                    <div className="space-y-3">
+                                        <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-[3px] text-muted-foreground italic ml-2">Email</Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            placeholder="Enter your email"
+                                            required
+                                            className="h-14 rounded-2xl border-border bg-secondary/10 focus:bg-white dark:focus:bg-zinc-900 transition-all font-bold italic px-6 text-lg"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <Label htmlFor="password" title="password" className="text-[10px] font-black uppercase tracking-[3px] text-muted-foreground italic ml-2">Password</Label>
+                                        <div className="relative">
                                             <Input
-                                                id="phone"
-                                                type="tel"
-                                                placeholder="9876543210"
+                                                id="password"
+                                                type={showPassword ? "text" : "password"}
+                                                placeholder="••••••••"
                                                 required
-                                                className="flex-1 h-11 border-zinc-200"
-                                                value={formData.phone}
+                                                className="h-14 rounded-2xl border-border bg-secondary/10 focus:bg-white dark:focus:bg-zinc-900 transition-all font-bold italic px-6 pr-14 text-lg"
+                                                value={formData.password}
                                                 onChange={handleChange}
-                                                disabled={isLoading}
                                             />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-primary transition-colors"
+                                            >
+                                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                            </button>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="email">Email Address</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="john@company.com"
-                                        required
-                                        className="h-11 border-zinc-200"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="password">Create Password</Label>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        required
-                                        className="h-11 border-zinc-200"
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                                <Button className="h-11 w-full bg-indigo-600 hover:bg-indigo-700 text-white transition-all mt-2" disabled={isLoading}>
-                                    {isLoading ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : null}
-                                    Send Verification OTP
-                                </Button>
-                            </form>
-                        </>
-                    ) : (
-                        <form onSubmit={handleVerifyOtp} className="grid gap-6 py-4">
-                            <div className="text-center space-y-2">
-                                <h3 className="text-lg font-bold">Verify your identity</h3>
-                                <p className="text-sm text-zinc-500">We've sent a 4-digit OTP to {formData.email}</p>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="otp">Enter 4-Digit OTP</Label>
-                                <Input
-                                    id="otp"
-                                    type="text"
-                                    placeholder="0 0 0 0"
-                                    maxLength={4}
-                                    className="h-14 text-center text-3xl tracking-[12px] font-bold border-indigo-100"
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value)}
-                                    required
-                                    disabled={isLoading}
-                                />
-                            </div>
-                            <Button className="h-11 w-full bg-indigo-600 hover:bg-indigo-700 text-white transition-all" disabled={isLoading}>
-                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Verify & Create Account
-                            </Button>
-
-                            <div className="text-center">
-                                {resendTimer > 0 ? (
-                                    <p className="text-xs text-zinc-500">Resend OTP in <span className="font-bold text-indigo-600">{resendTimer}s</span></p>
-                                ) : (
-                                    <button
+                                    <div className="space-y-3">
+                                        <Label htmlFor="confirmPassword" title="confirm password" className="text-[10px] font-black uppercase tracking-[3px] text-muted-foreground italic ml-2">Repeat Password</Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="confirmPassword"
+                                                type={showConfirmPassword ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                required
+                                                className="h-14 rounded-2xl border-border bg-secondary/10 focus:bg-white dark:focus:bg-zinc-900 transition-all font-bold italic px-6 pr-14 text-lg"
+                                                value={formData.confirmPassword}
+                                                onChange={handleChange}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-primary transition-colors"
+                                            >
+                                                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <Button 
                                         type="button"
-                                        className="text-xs font-bold text-indigo-600 hover:text-indigo-500 underline"
-                                        onClick={handleSubmit}
-                                        disabled={isLoading}
+                                        onClick={() => setStep(2)}
+                                        className="h-16 w-full bg-foreground text-white rounded-2xl font-black italic tracking-[5px] shadow-2xl hover-lift transition-all uppercase text-xs"
                                     >
-                                        Resend OTP
+                                        Next <ChevronRight className="ml-2 h-5 w-5" />
+                                    </Button>
+                                </motion.div>
+                            ) : step === 2 ? (
+                                <motion.div
+                                    key="step2"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="space-y-8"
+                                >
+                                    <div className="grid gap-6 sm:grid-cols-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRoleSelect("startup")}
+                                            className={cn(
+                                                "relative flex flex-col p-8 rounded-[40px] border-2 transition-all text-left group overflow-hidden hover-lift",
+                                                formData.role === "startup" 
+                                                    ? "border-primary bg-primary/5 shadow-2xl shadow-primary/10" 
+                                                    : "border-border bg-secondary/10 hover:border-primary/20"
+                                            )}
+                                        >
+                                            <div className="h-14 w-14 rounded-2xl bg-primary text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-xl shadow-primary/20">
+                                                <User className="h-7 w-7" />
+                                            </div>
+                                            <p className="font-black text-[10px] uppercase tracking-[3px] text-muted-foreground mb-1 italic">Founders</p>
+                                            <h3 className="text-2xl font-black tracking-tighter italic text-foreground uppercase">Founder</h3>
+                                            <p className="mt-3 text-sm font-bold leading-relaxed text-muted-foreground italic">I want to find investors for my startup.</p>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRoleSelect("investor")}
+                                            className={cn(
+                                                "relative flex flex-col p-8 rounded-[40px] border-2 transition-all text-left group overflow-hidden hover-lift",
+                                                formData.role === "investor" 
+                                                    ? "border-primary bg-primary/5 shadow-2xl shadow-primary/10" 
+                                                    : "border-border bg-secondary/10 hover:border-primary/20"
+                                            )}
+                                        >
+                                            <div className="h-14 w-14 rounded-2xl bg-foreground text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-xl shadow-foreground/20">
+                                                <Wallet className="h-7 w-7" />
+                                            </div>
+                                            <p className="font-black text-[10px] uppercase tracking-[3px] text-muted-foreground mb-1 italic">Investors</p>
+                                            <h3 className="text-2xl font-black tracking-tighter italic text-foreground uppercase">Investor</h3>
+                                            <p className="mt-3 text-sm font-bold leading-relaxed text-muted-foreground italic">I want to find and fund great startups.</p>
+                                        </button>
+                                    </div>
+
+                                    <div className="flex gap-4">
+                                        <Button 
+                                            type="button"
+                                            variant="outline" 
+                                            className="h-16 px-10 rounded-2xl border-border bg-secondary/10 font-black italic uppercase tracking-[3px] hover-lift text-[10px]"
+                                            onClick={() => setStep(1)}
+                                        >
+                                            Back
+                                        </Button>
+                                        <Button 
+                                            className="h-16 flex-1 bg-foreground text-white rounded-2xl font-black italic tracking-[5px] shadow-2xl hover-lift transition-all uppercase text-xs"
+                                            disabled={isLoading}
+                                        >
+                                            {isLoading ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : null}
+                                            Join
+                                        </Button>
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="step3"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="space-y-8"
+                                >
+                                    <div className="text-center space-y-4">
+                                        <div className="mx-auto h-20 w-20 bg-primary/10 rounded-[30px] flex items-center justify-center mb-6 shadow-2xl shadow-primary/5">
+                                            <ShieldCheck className="h-10 w-10 text-primary animate-pulse" />
+                                        </div>
+                                        <h3 className="text-3xl font-black tracking-tighter italic text-foreground uppercase">Verify.</h3>
+                                        <p className="text-lg font-bold text-muted-foreground italic">We sent a 6-digit code to <br/><span className="text-foreground font-black">{formData.email}</span></p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <Label htmlFor="otp" className="text-[10px] font-black uppercase tracking-[3px] text-muted-foreground italic ml-2">Code</Label>
+                                        <Input
+                                            id="otp"
+                                            placeholder="••••••"
+                                            maxLength={6}
+                                            required
+                                            className="h-20 rounded-[30px] border-border bg-secondary/10 shadow-inner text-center text-4xl font-black tracking-[15px] focus:bg-white dark:focus:bg-zinc-900 transition-all font-mono"
+                                            value={formData.otp}
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-4">
+                                        <Button 
+                                            type="button"
+                                            variant="outline" 
+                                            className="h-16 px-10 rounded-2xl border-border bg-secondary/10 font-black italic uppercase tracking-[3px] hover-lift text-[10px]"
+                                            onClick={() => setStep(2)}
+                                        >
+                                            Back
+                                        </Button>
+                                        <Button 
+                                            className="h-16 flex-1 bg-primary text-white rounded-2xl font-black italic tracking-[5px] shadow-2xl hover-lift transition-all uppercase text-xs"
+                                            disabled={isLoading}
+                                        >
+                                            {isLoading ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : null}
+                                            Complete
+                                        </Button>
+                                    </div>
+                                    
+                                    <button 
+                                        type="button"
+                                        onClick={handleSendOTP}
+                                        className="w-full text-[10px] font-black text-muted-foreground hover:text-primary transition-colors uppercase tracking-[4px] italic"
+                                    >
+                                        Resend Code
                                     </button>
-                                )}
-                            </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </form>
 
-                            <Button type="button" variant="ghost" className="text-xs text-zinc-500" onClick={() => setStep(1)}>
-                                Back to details
-                            </Button>
-                        </form>
-                    )}
+                    <p className="mt-16 text-center text-sm font-bold italic text-muted-foreground">
+                        Already in?{" "}
+                        <Link href="/login" className="font-black text-primary hover:text-primary/80 transition-all uppercase tracking-widest underline decoration-2 underline-offset-4 decoration-primary ml-1">
+                            Login
+                        </Link>
+                    </p>
+                </div>
+            </div>
 
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-zinc-200" />
+            {/* Sidebar Visual Section */}
+            <div className="hidden lg:flex lg:w-1/2 bg-foreground p-24 relative overflow-hidden flex-col justify-between transition-colors duration-700">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,_rgba(99,102,241,0.2)_0%,_transparent_100%)] pointer-events-none" />
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 brightness-200 contrast-150" />
+                
+                <div>
+                    <div className="flex gap-3 items-center mb-16">
+                        <ShieldCheck className="text-primary h-6 w-6 animate-pulse" />
+                        <span className="text-white/40 text-[10px] font-black uppercase tracking-[5px] italic">Secure</span>
+                    </div>
+                    <h2 className="text-7xl font-black text-white italic leading-[1] tracking-tighter uppercase whitespace-pre-line">
+                        Find your next{"\n"}big deal.
+                    </h2>
+                </div>
+
+                <div className="space-y-12">
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 1, delay: 0.5 }}
+                        className="p-12 rounded-[60px] glass border-white/5 shadow-2xl relative overflow-hidden group"
+                    >
+                        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Quote size={120} className="text-white fill-white" />
                         </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-white px-2 text-zinc-500">Or register with</span>
+                        <div className="flex gap-2 mb-8">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="h-10 w-10 rounded-xl bg-white/5 border border-white/10" />
+                            ))}
+                        </div>
+                        <p className="text-white font-black italic text-2xl leading-tight mb-8">
+                            "It's so much easier to find investors now. Startup Connect organized everything into a simple pipeline."
+                        </p>
+                        <div className="flex items-center gap-4">
+                            <div className="h-1.5 w-16 bg-primary rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+                            <p className="text-white/60 font-black uppercase tracking-[3px] text-[10px] italic">Marcus Thorne, CEO of Luminar AI</p>
+                        </div>
+                    </motion.div>
+
+                    <div className="flex justify-between items-center text-[10px] font-black text-white/10 uppercase tracking-[6px] italic">
+                        <span>Startup Connect</span>
+                        <div className="flex gap-6">
+                            <span className="text-white/20">Secure</span>
                         </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Button
-                            variant="outline"
-                            className="h-11 border-zinc-200"
-                            disabled={isLoading}
-                            onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`}
-                        >
-                            Google
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="h-11 border-zinc-200"
-                            disabled={isLoading}
-                            onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/linkedin`}
-                        >
-                            LinkedIn
-                        </Button>
-                    </div>
-                </CardContent>
-                <CardFooter className="flex flex-wrap items-center justify-center gap-1 text-sm text-zinc-600 border-t border-zinc-50 pt-6">
-                    <span>Already have an account?</span>
-                    <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
-                        Login here
-                    </Link>
-                </CardFooter>
-            </Card>
+                </div>
+            </div>
         </div>
     );
 }

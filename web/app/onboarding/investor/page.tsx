@@ -137,11 +137,11 @@ export default function InvestorOnboarding() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="minInvestment">Min Investment ($)</Label>
+                                <Label htmlFor="minInvestment">Min Investment (₹)</Label>
                                 <Input
                                     id="minInvestment"
                                     type="number"
-                                    placeholder="10000"
+                                    placeholder="500000"
                                     required
                                     value={formData.minInvestment}
                                     onChange={handleChange}
@@ -149,11 +149,11 @@ export default function InvestorOnboarding() {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="maxInvestment">Max Investment ($)</Label>
+                                <Label htmlFor="maxInvestment">Max Investment (₹)</Label>
                                 <Input
                                     id="maxInvestment"
                                     type="number"
-                                    placeholder="500000"
+                                    placeholder="10000000"
                                     required
                                     value={formData.maxInvestment}
                                     onChange={handleChange}

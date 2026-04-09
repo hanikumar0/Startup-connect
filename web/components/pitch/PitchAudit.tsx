@@ -29,7 +29,7 @@ interface AuditSection {
     feedback: string;
 }
 
-const MOCK_SECTIONS: AuditSection[] = [
+const DEFAULT_SECTIONS: AuditSection[] = [
     {
         title: "Problem Statement",
         icon: Target,
@@ -188,7 +188,7 @@ export function PitchAudit() {
                             <div className="space-y-4">
                                 <h4 className="text-sm font-black uppercase tracking-widest text-slate-400">Slide-by-Slide Audit</h4>
                                 <div className="grid grid-cols-1 gap-4">
-                                    {MOCK_SECTIONS.map((section, i) => (
+                                    {DEFAULT_SECTIONS.map((section, i) => (
                                         <div
                                             key={i}
                                             className="group p-5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
@@ -196,8 +196,8 @@ export function PitchAudit() {
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${section.status === 'found' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' :
-                                                            section.status === 'weak' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600' :
-                                                                'bg-red-50 dark:bg-red-900/20 text-red-600'
+                                                        section.status === 'weak' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600' :
+                                                            'bg-red-50 dark:bg-red-900/20 text-red-600'
                                                         }`}>
                                                         <section.icon size={20} />
                                                     </div>

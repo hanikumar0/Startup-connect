@@ -1,26 +1,22 @@
-// src/utils/embedding.js
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "embedding-001" });
 
 /**
- * Get embedding vector for a given text using OpenAI embeddings.
- * Updated to use the current OpenAI SDK v4+ API.
+ * Get embedding vector for a given text using Google Gemini embeddings.
  * @param {string} text - Input text to embed.
  * @returns {Promise<number[]>} - Embedding vector.
  */
 export async function getEmbedding(text) {
     if (!text) return [];
     try {
-        const response = await openai.embeddings.create({
-            model: "text-embedding-ada-002",
-            input: text,
-        });
-        return response.data[0].embedding;
+        const result = await model.embedContent(text);
+        return result.embedding.values;
     } catch (err) {
-        console.error("Embedding error:", err.message);
+        console.error("Gemini Embedding error:", err.message);
+        // Fallback to OpenAI if key exists?
+        // For now, satisfy "open api not working" by not relying on it.
         return [];
     }
 }

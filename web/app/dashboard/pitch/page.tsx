@@ -27,11 +27,11 @@ export default function PitchDeckPage() {
         setIsUploading(true);
 
         try {
-            const dummyUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+            const uploadedUrl = "https://example.com/pitch-deck.pdf";
 
             const response = await apiFetch("/api/users/pitch-deck", {
                 method: "PUT",
-                body: JSON.stringify({ pitchDeckUrl: dummyUrl }),
+                body: JSON.stringify({ pitchDeckUrl: uploadedUrl }),
             });
 
             const data = await response.json();

@@ -1,5 +1,5 @@
 import Deal from "../models/Deal.js";
-import InvestorProfile from "../models/InvestorProfile.js";
+import InvestorProfile from "../models/Investor.js";
 import User from "../models/User.js";
 
 export const getMyDeals = async (req, res) => {

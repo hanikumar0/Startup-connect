@@ -5,6 +5,8 @@ import app from "./app.js";
 import connectDB from "./config/db.js";
 import setupSockets from "./sockets/index.js";
 import logger from "./config/logger.js";
+import schedulerService from "./services/schedulerService.js";
+import runHealthCheck from "./utils/healthCheck.js";
 
 // Validate environment before anything else
 validateEnvironment();
@@ -20,6 +22,9 @@ const startServer = async () => {
     // Setup WebSockets
     setupSockets(server);
 
+    // Initialize Scheduler
+    schedulerService.init();
+
     server.on("error", (e) => {
       if (e.code === "EADDRINUSE") {
         logger.error(`❌ Port ${PORT} is currently in use. Existing process must be cleared.`);
@@ -32,6 +37,8 @@ const startServer = async () => {
 
     server.listen(PORT, () => {
       logger.info(`✅ Server running on port ${PORT} [${process.env.NODE_ENV || "development"}]`);
+      // Run the comprehensive service health check (wrapped in try/catch for safety)
+      runHealthCheck().catch(err => logger.error({ err }, "Health check failed to execute"));
     });
   } catch (error) {
     logger.error({ err: error }, "❌ Unexpected server crash during initialization");

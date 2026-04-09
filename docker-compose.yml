@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/startup-connect
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - startup-net
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/startup-connect
+    depends_on:
+      - mongodb
+    networks:
+      - startup-net
+
+  mongodb:
+    image: mongo:latest
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - startup-net
+
+  redis:
+    image: redis:alpine
+    restart: always
+    networks:
+      - startup-net
+
+networks:
+  startup-net:
+    driver: bridge
+
+volumes:
+  mongodb_data:

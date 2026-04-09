@@ -1,0 +1,75 @@
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  
+  --color-background: #F8F9FB;
+  --color-foreground: #111827;
+  
+  --color-card: #FFFFFF;
+  --color-card-foreground: #111827;
+  
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #111827;
+  
+  --color-primary: #6C5CE7;
+  --color-primary-foreground: #FFFFFF;
+  
+  --color-secondary: #F3F4F6;
+  --color-secondary-foreground: #6B7280;
+  
+  --color-muted: #F3F4F6;
+  --color-muted-foreground: #6B7280;
+  
+  --color-accent: #6C5CE7;
+  --color-accent-foreground: #FFFFFF;
+  
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+  
+  --color-border: #E5E7EB;
+  --color-input: #E5E7EB;
+  --color-ring: #6C5CE7;
+
+  --radius-xl: 16px;
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --radius-sm: 4px;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/10 selection:text-primary;
+  }
+  h1 {
+    @apply text-3xl font-semibold tracking-tight text-foreground;
+  }
+  h2 {
+    @apply text-xl font-medium tracking-tight text-foreground;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white border border-border shadow-sm;
+  }
+  .hover-lift {
+     @apply transition-transform duration-200 hover:-translate-y-0.5;
+  }
+}

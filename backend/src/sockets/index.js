@@ -1,8 +1,7 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
+import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
-import Notification from "../models/Notification.js";
-import User from "../models/User.js";
 
 const setupSockets = (server) => {
     const isProduction = process.env.NODE_ENV === "production";
@@ -18,19 +17,16 @@ const setupSockets = (server) => {
             credentials: true
         },
         pingTimeout: 60000,
-        pingInterval: 25000,
+        pingInterval: 25000
     });
 
-    // ─── Socket Authentication Middleware ───
+    // Socket Authentication
     io.use((socket, next) => {
         const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-
         if (!token) {
-            // Allow unauthenticated connections in development
             if (!isProduction) return next();
             return next(new Error("Authentication required"));
         }
-
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             socket.userId = decoded.id;
@@ -44,119 +40,65 @@ const setupSockets = (server) => {
     io.on("connection", (socket) => {
         console.log(`🔌 User connected: ${socket.id} (userId: ${socket.userId || "anonymous"})`);
 
-        // Join user's personal notification room
         if (socket.userId) {
-            socket.join(`user_${socket.userId}`);
+            socket.join(socket.userId);
         }
 
-        // User joins a private room based on conversationId
-        socket.on("join_room", (conversationId) => {
-            if (!conversationId || typeof conversationId !== "string") return;
+        socket.on("join_conversation", (conversationId) => {
             socket.join(conversationId);
+            console.log(`User ${socket.userId} joined conversation ${conversationId}`);
         });
 
-        // Handle sending messages
         socket.on("send_message", async (data) => {
-            const { conversationId, senderId, receiverId, text } = data;
-
-            if (!conversationId || !senderId || !receiverId || !text) {
-                socket.emit("error", { message: "Missing required message fields" });
-                return;
-            }
-
-            // Sanitize text input (basic XSS prevention)
-            const sanitizedText = text
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .slice(0, 5000); // Max message length
+            const { conversationId, senderId, text, attachments, messageType } = data;
 
             try {
-                const newMessage = await Message.create({
+                const message = await Message.create({
                     conversationId,
                     senderId,
-                    receiverId,
-                    text: sanitizedText,
+                    text,
+                    attachments,
+                    messageType
                 });
 
-                io.to(conversationId).emit("receive_message", newMessage);
-
-                // Create notification for receiver
-                try {
-                    const sender = await User.findById(senderId).lean();
-                    if (sender) {
-                        await Notification.create({
-                            recipient: receiverId,
-                            sender: senderId,
-                            type: "MESSAGE",
-                            title: `New Message from ${sender.name}`,
-                            message: sanitizedText.length > 50 ? sanitizedText.substring(0, 50) + "..." : sanitizedText,
-                            link: "/dashboard/chat"
-                        });
-
-                        // Emit to receiver's personal room
-                        io.to(`user_${receiverId}`).emit("new_notification", { type: "MESSAGE" });
+                await Conversation.findByIdAndUpdate(conversationId, {
+                    lastMessage: {
+                        text: text || (attachments?.length > 0 ? "Sent a file" : "Meeting Request"),
+                        senderId,
+                        at: new Date()
                     }
-                } catch (notifErr) {
-                    console.warn("Notification creation failed:", notifErr.message);
-                }
+                });
+
+                // Broadcast to conversation room
+                io.to(conversationId).emit("receive_message", message);
+
+                // Notify other participants via their personal rooms
+                const conversation = await Conversation.findById(conversationId);
+                conversation.participants.forEach(pId => {
+                    const participantId = pId.toString();
+                    if (participantId !== senderId) {
+                        io.to(participantId).emit("new_message_alert", {
+                            conversationId,
+                            message
+                        });
+                    }
+                });
+
             } catch (error) {
-                console.error("❌ Error saving message:", error.message);
+                console.error("❌ Send message error:", error.message);
                 socket.emit("error", { message: "Failed to send message" });
             }
         });
 
-        // Mark messages as read
-        socket.on("mark_messages_read", async ({ conversationId, userId }) => {
-            try {
-                await Message.updateMany(
-                    { conversationId, receiverId: userId, isRead: false },
-                    { isRead: true }
-                );
-                io.to(conversationId).emit("messages_marked_read", { conversationId, userId });
-            } catch (error) {
-                console.error("Error marking read:", error.message);
-            }
-        });
-
-        // Typing Indicators
-        socket.on("typing", ({ conversationId, userId }) => {
-            socket.to(conversationId).emit("user_typing", { userId });
-        });
-
-        socket.on("stop_typing", ({ conversationId, userId }) => {
-            socket.to(conversationId).emit("user_stop_typing", { userId });
-        });
-
-        // --- WebRTC Signaling ---
-        socket.on("call_user", (data) => {
-            io.to(data.to).emit("call_made", {
-                offer: data.offer,
-                socket: socket.id,
-                from: data.from,
-                roomId: data.roomId
+        socket.on("typing", ({ conversationId, isTyping }) => {
+            socket.to(conversationId).emit("user_typing", { 
+                senderId: socket.userId, 
+                isTyping 
             });
         });
 
-        socket.on("make_answer", (data) => {
-            io.to(data.to).emit("answer_made", {
-                socket: socket.id,
-                answer: data.answer
-            });
-        });
-
-        socket.on("ice_candidate", (data) => {
-            io.to(data.to).emit("ice_candidate", {
-                candidate: data.candidate,
-                socket: socket.id
-            });
-        });
-
-        socket.on("disconnect", () => {
-            console.log(`👋 User disconnected: ${socket.id}`);
-        });
-
-        socket.on("error", (error) => {
-            console.error(`Socket error for ${socket.id}:`, error.message);
+        socket.on("disconnect", (reason) => {
+            console.log(`👋 User disconnected: ${socket.id} (Disconnected بسبب: ${reason})`);
         });
     });
 

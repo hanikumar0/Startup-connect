@@ -22,6 +22,10 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "Not authorized, user not found" });
     }
 
+    if (user.status === "blocked") {
+      return res.status(403).json({ message: "Access denied: Account blocked by administrator." });
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -35,10 +39,25 @@ export const protect = async (req, res, next) => {
   }
 };
 
+// @desc    Generic check for admin access (any admin level)
 export const authorizeAdmin = (req, res, next) => {
-  if (req.user && req.user.role === "ADMIN") {
+  const adminRoles = ["superadmin", "moderator", "support"];
+  if (req.user && adminRoles.includes(req.user.role)) {
     next();
   } else {
-    res.status(403).json({ message: "Not authorized as an admin" });
+    res.status(403).json({ success: false, message: "Restricted Error: Administrator identity verification failed." });
   }
+};
+
+// @desc    Granular check for specific roles
+export const authorizeRoles = (...roles) => {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: `RBAC Violation: Role [${req.user.role}] does not have required permissions for this segment.` 
+            });
+        }
+        next();
+    };
 };

@@ -1,8 +1,11 @@
+import mongoose from "mongoose";
 import User from "../models/User.js";
-import StartupProfile from "../models/StartupProfile.js";
-import InvestorProfile from "../models/InvestorProfile.js";
+import StartupProfile from "../models/Startup.js";
+import InvestorProfile from "../models/Investor.js";
 import Notification from "../models/Notification.js";
 import Connection from "../models/Connection.js";
+import Deal from "../models/Deal.js";
+import Meeting from "../models/Meeting.js";
 
 export const createStartupProfile = async (req, res) => {
     try {
@@ -97,24 +100,50 @@ export const getDashboardStats = async (req, res) => {
 
         if (user.role === "STARTUP") {
             const profile = await StartupProfile.findOne({ userId });
+            const matchesCount = await Connection.countDocuments({
+                $or: [{ sender: userId }, { recipient: userId }],
+                status: "ACCEPTED"
+            });
+            const meetingsCount = await Meeting.countDocuments({
+                $or: [{ initiatorId: userId }, { guestId: userId }],
+                status: "SCHEDULED",
+                startTime: { $gte: new Date() }
+            });
+
             res.status(200).json({
                 success: true,
                 stats: [
-                    { label: "Funding Goal", value: `$${profile?.fundingRequired?.toLocaleString() || '0'}`, icon: "DollarSign", trend: "0%", color: "text-emerald-600", bg: "bg-emerald-50" },
-                    { label: "Matches Found", value: "0", icon: "Target", trend: "0 new", color: "text-indigo-600", bg: "bg-indigo-50" },
-                    { label: "Profile Views", value: "0", icon: "Users", trend: "0%", color: "text-blue-600", bg: "bg-blue-50" },
-                    { label: "Meetings", value: "0", icon: "Calendar", trend: "None", color: "text-purple-600", bg: "bg-purple-50" },
+                    { label: "Funding Goal", value: `₹${((profile?.fundingRequired || 0) / 10000000).toFixed(1)}Cr`, icon: "IndianRupee", trend: "Target", color: "text-emerald-600", bg: "bg-emerald-50" },
+                    { label: "Active Matches", value: matchesCount.toString(), icon: "Target", trend: "Verified", color: "text-indigo-600", bg: "bg-indigo-50" },
+                    { label: "Profile Views", value: "0", icon: "Users", trend: "Live", color: "text-blue-600", bg: "bg-blue-50" },
+                    { label: "Meetings", value: meetingsCount.toString(), icon: "Calendar", trend: "Upcoming", color: "text-purple-600", bg: "bg-purple-50" },
                 ]
             });
         } else {
             const profile = await InvestorProfile.findOne({ userId });
+            const totalInvested = await Deal.aggregate([
+                { $match: { investor: new mongoose.Types.ObjectId(userId), stage: "CLOSED" } },
+                { $group: { _id: null, total: { $sum: "$amount" } } }
+            ]);
+
+            const activeDeals = await Deal.countDocuments({
+                investor: userId,
+                stage: { $nin: ["CLOSED", "LOST"] }
+            });
+
+            const scheduledMeetings = await Meeting.countDocuments({
+                $or: [{ initiatorId: userId }, { guestId: userId }],
+                status: "SCHEDULED",
+                startTime: { $gte: new Date() }
+            });
+
             res.status(200).json({
                 success: true,
                 stats: [
-                    { label: "Total Invested", value: "$0", icon: "PieChart", trend: "$0", color: "text-indigo-600", bg: "bg-indigo-50" },
-                    { label: "Active Deals", value: "0", icon: "Zap", trend: "None", color: "text-emerald-600", bg: "bg-emerald-50" },
-                    { label: "New Matches", value: "0", icon: "Target", trend: "None", color: "text-blue-600", bg: "bg-blue-50" },
-                    { label: "Scheduled", value: "0", icon: "Calendar", trend: "None", color: "text-purple-600", bg: "bg-purple-50" },
+                    { label: "Total Invested", value: `₹${((totalInvested[0]?.total || 0) / 10000000).toFixed(1)}Cr`, icon: "PieChart", trend: "Portfolio", color: "text-indigo-600", bg: "bg-indigo-50" },
+                    { label: "Active Deals", value: activeDeals.toString(), icon: "Zap", trend: "In Pipeline", color: "text-emerald-600", bg: "bg-emerald-50" },
+                    { label: "New Matches", value: "0", icon: "Target", trend: "Recent", color: "text-blue-600", bg: "bg-blue-50" },
+                    { label: "Scheduled", value: scheduledMeetings.toString(), icon: "Calendar", trend: "This Week", color: "text-purple-600", bg: "bg-purple-50" },
                 ]
             });
         }

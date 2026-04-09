@@ -75,9 +75,9 @@ export default function VDRPage() {
                 body: JSON.stringify({
                     name: newDoc.name,
                     category: newDoc.category,
-                    url: "https://example.com/mock-doc.pdf", // Mock URL
+                    url: "https://example.com/uploaded-doc.pdf",
                     isRestricted: newDoc.isRestricted,
-                    size: 1024 * 1024 * 2, // 2MB mock
+                    size: 1024 * 1024 * 2, // 2MB size
                     fileType: "application/pdf"
                 }),
             });

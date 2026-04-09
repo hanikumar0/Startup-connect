@@ -1,0 +1,65 @@
+﻿
+> web@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.1 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 36.7s
+  Running TypeScript ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/54) ...
+npm : The width(-1) and 
+height(-1) of chart 
+should be greater than 
+0,
+At line:1 char:1
++ npm run build > 
+build_log.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo      
+        : NotSpecified  
+  : (The width(-1) a.   
+ ..greater than 0,:S    
+tring) [], RemoteEx    
+ception
+    + FullyQualifiedErr 
+   orId : NativeComman  
+  dError
+ 
+       please check the 
+style of container, or 
+the props width(100%) 
+and height(100%),
+       or add a 
+minWidth(0) or 
+minHeight(undefined) or 
+use aspect(undefined) 
+to control the
+       height and width.
+Error occurred 
+prerendering page 
+"/admin/outreach". Read 
+more: https://nextjs.org
+/docs/messages/prerender
+-error
+TypeError: Cannot read 
+properties of null 
+(reading 'totalLeads')
+    at cz (C:\startup co
+nnect\web\.next\server\c
+hunks\ssr\_2469dd4f._.js
+:1:62360) {
+  digest: '2426462276'
+}
+Export encountered an 
+error on 
+/admin/outreach/page: 
+/admin/outreach, 
+exiting the build.
+  Generating static pages using 7 workers (13/54) 
+Γ¿» Next.js build 
+worker exited with 
+code: 1 and signal: null

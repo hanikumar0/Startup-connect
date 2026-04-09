@@ -1,6 +1,6 @@
 // src/services/recommendationService.js
-import InvestorProfile from "../models/InvestorProfile.js";
-import StartupProfile from "../models/StartupProfile.js";
+import InvestorProfile from "../models/Investor.js";
+import StartupProfile from "../models/Startup.js";
 import User from "../models/User.js";
 import ProfileEmbedding from "../models/ProfileEmbedding.js";
 import { getEmbedding } from "../utils/embedding.js";

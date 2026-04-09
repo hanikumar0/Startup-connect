@@ -48,10 +48,28 @@ const DealSchema = new mongoose.Schema({
     priority: String
 }, { timestamps: true });
 
+const ConnectionSchema = new mongoose.Schema({
+    sender: mongoose.Schema.Types.ObjectId,
+    recipient: mongoose.Schema.Types.ObjectId,
+    status: { type: String, default: 'PENDING' }
+}, { timestamps: true });
+
+const MeetingSchema = new mongoose.Schema({
+    initiatorId: mongoose.Schema.Types.ObjectId,
+    guestId: mongoose.Schema.Types.ObjectId,
+    title: String,
+    startTime: Date,
+    endTime: Date,
+    status: { type: String, default: 'SCHEDULED' },
+    roomId: String
+}, { timestamps: true });
+
 const User = mongoose.model('User', UserSchema);
 const InvestorProfile = mongoose.model('InvestorProfile', InvestorProfileSchema);
 const StartupProfile = mongoose.model('StartupProfile', StartupProfileSchema);
 const Deal = mongoose.model('Deal', DealSchema);
+const Connection = mongoose.model('Connection', ConnectionSchema);
+const Meeting = mongoose.model('Meeting', MeetingSchema);
 
 async function seed() {
     try {
@@ -63,6 +81,8 @@ async function seed() {
         await InvestorProfile.deleteMany({});
         await StartupProfile.deleteMany({});
         await Deal.deleteMany({});
+        await Connection.deleteMany({});
+        await Meeting.deleteMany({});
         console.log('Cleared existing data');
 
         const hashedPassword = await bcrypt.hash('password123', 10);
@@ -73,7 +93,8 @@ async function seed() {
             email: 'startup@demo.com',
             password: hashedPassword,
             role: 'STARTUP',
-            isProfileCompleted: true
+            isProfileCompleted: true,
+            verificationStatus: 'VERIFIED'
         });
 
         await StartupProfile.create({
@@ -100,7 +121,8 @@ async function seed() {
                 email: inv.email,
                 password: hashedPassword,
                 role: 'INVESTOR',
-                isProfileCompleted: true
+                isProfileCompleted: true,
+                verificationStatus: 'VERIFIED'
             });
 
             const profile = await InvestorProfile.create({
@@ -134,6 +156,26 @@ async function seed() {
                 priority: d.priority
             });
         }
+
+        // 4. Create some Connections
+        for (const inv of createdInvestors) {
+            await Connection.create({
+                sender: inv.user._id,
+                recipient: startupUser._id,
+                status: 'ACCEPTED'
+            });
+        }
+
+        // 5. Create an upcoming Meeting
+        await Meeting.create({
+            initiatorId: createdInvestors[0].user._id,
+            guestId: startupUser._id,
+            title: 'Initial Diligence Call with Sequoia',
+            startTime: new Date(Date.now() + 86400000), // tomorrow
+            endTime: new Date(Date.now() + 86400000 + 3600000),
+            status: 'SCHEDULED',
+            roomId: 'room_' + Math.random().toString(36).substring(7)
+        });
 
         console.log('Seeding completed successfully!');
         console.log('Demo Login: startup@demo.com / password123');

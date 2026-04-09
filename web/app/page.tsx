@@ -1,168 +1,260 @@
 "use client";
 
-import { Rocket, ShieldCheck, Zap, MessageSquare, Video, ArrowRight, Sparkles } from "lucide-react";
+import { Rocket, ShieldCheck, Zap, MessageSquare, Video, ArrowRight, Sparkles, Target, BarChart3, Lock, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { TrustRadar } from "@/components/TrustRadar";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col bg-white text-zinc-900 selection:bg-indigo-100 selection:text-indigo-900">
-      {/* Navigation */}
-      <nav className="fixed top-0 z-50 w-full border-b border-zinc-100 bg-white/60 backdrop-blur-xl">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 group transition-all">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
-              <Rocket className="h-5 w-5" />
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      {/* SaaS Navigation */}
+      <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-sm border-b border-border">
+        <div className="max-w-[1280px] mx-auto h-16 flex items-center justify-between px-6">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white">
+              <Rocket className="h-4 w-4" />
             </div>
-            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 via-indigo-600 to-zinc-900 bg-[length:200%_auto] animate-gradient-x">Startup Connect</span>
+            <span className="text-lg font-bold tracking-tight text-slate-900 uppercase">Startup Connect</span>
           </Link>
-          <div className="hidden items-center gap-8 md:flex">
-            <Link href="#features" className="text-sm font-medium transition-colors hover:text-indigo-600 underline-offset-4 hover:underline">Features</Link>
-            <Link href="/about" className="text-sm font-medium transition-colors hover:text-indigo-600 underline-offset-4 hover:underline">About</Link>
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="font-semibold text-zinc-600">Login</Button>
-            </Link>
-            <Link href="/register">
-              <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 px-6 font-bold">Get Started</Button>
-            </Link>
+          <div className="hidden md:flex items-center gap-8">
+            <Link href="#features" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Features</Link>
+            <Link href="#how-it-works" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">How it Works</Link>
+            <Link href="#trust" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Verification</Link>
+            <div className="flex items-center gap-4 border-l border-slate-200 pl-8">
+               <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Sign in</Link>
+               <Link href="/register">
+                 <Button className="h-9 px-4 bg-primary text-white rounded-md text-sm font-semibold shadow-sm hover:bg-primary/90 transition-all">Get Started</Button>
+               </Link>
+            </div>
           </div>
         </div>
       </nav>
 
-      <main className="flex-1 relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-full max-w-7xl blur-[140px] opacity-[0.15] bg-gradient-to-r from-indigo-400 via-purple-500 to-emerald-400 pointer-events-none rounded-full" />
-        {/* Hero Section */}
-        <section className="relative overflow-hidden pt-32 pb-20 lg:pt-48 lg:pb-32">
-          <div className="container relative z-10 mx-auto px-4 text-center sm:px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Badge variant="outline" className="mb-6 py-1.5 px-6 text-indigo-600 border-indigo-200 bg-indigo-50/50 backdrop-blur-sm font-bold text-xs uppercase tracking-widest gap-2">
-                <Sparkles className="h-3 w-3" />
-                Next Generation Venture Marketplace
-              </Badge>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="mx-auto max-w-5xl text-6xl font-extrabold tracking-tight text-zinc-900 sm:text-8xl lg:leading-[1.05]"
-            >
-              Securely Connect <span className="text-indigo-600 drop-shadow-sm transition-all hover:text-indigo-700">Startups</span> <br className="hidden lg:block" /> with <span className="text-indigo-600">Investors</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-zinc-600 sm:text-xl font-medium"
-            >
-              The industry-first AI hyper-marketplace bridging the trust gap between innovative founders and the right strategic capital.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="mt-12 flex flex-col items-center justify-center gap-5 sm:flex-row"
-            >
-              <Link href="/register">
-                <Button size="lg" className="h-14 px-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-xl shadow-indigo-200 transition-all hover:scale-105 active:scale-95 font-bold text-base">
-                  Join as Startup <ArrowRight className="ml-2 h-5 w-5" />
+      <main className="flex-1">
+        
+        {/* Crisp Hero Section */}
+        <section className="pt-24 pb-20 px-6">
+          <div className="max-w-[1280px] mx-auto text-center space-y-8">
+             <div className="inline-flex items-center rounded-full px-4 py-1.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-widest">
+                <Sparkles className="h-4 w-4 mr-2" />
+                <span>AI Matching Engine Now Live</span>
+             </div>
+             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 max-w-4xl mx-auto leading-[1.05]">
+               The Institutional Grade <br />
+               Matchmaking Engine.
+             </h1>
+             <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+               Connecting the next generation of founders and investors with precision matches, automated diligence, and institutional trust.
+             </p>
+             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link href="/register">
+                   <Button className="h-12 px-8 rounded-md bg-primary text-white font-semibold text-base shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
+                     Start Matching
+                   </Button>
+                </Link>
+                <Button variant="outline" className="h-12 px-8 rounded-md border-slate-200 bg-white text-slate-900 font-semibold text-base hover:bg-slate-50 transition-all">
+                   View Features
                 </Button>
-              </Link>
-              <Link href="/register?role=investor">
-                <Button size="lg" variant="outline" className="h-14 px-10 border-zinc-200 hover:bg-zinc-50 rounded-2xl transition-all hover:scale-105 active:scale-95 font-bold text-base bg-white/50 backdrop-blur-sm">
-                  Join as Investor
-                </Button>
-              </Link>
-            </motion.div>
-
-            {/* Visual Element */}
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1, delay: 0.5 }}
-              className="mt-28 flex justify-center perspective-1000"
-            >
-              <div className="relative h-80 w-full max-w-5xl rounded-3xl border border-zinc-200 bg-white/50 backdrop-blur-xl p-3 shadow-2xl rotate-1 group">
-                <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-indigo-400 to-transparent"></div>
-                <div className="h-full w-full rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 bg-indigo-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <Rocket className="h-12 w-12 text-zinc-300 group-hover:text-indigo-600 group-hover:scale-125 transition-all duration-700" />
-                  <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center px-4">
-                    <div className="h-2 w-32 bg-zinc-200 rounded-full" />
-                    <div className="h-8 w-8 bg-indigo-100 rounded-full animate-pulse" />
-                  </div>
+             </div>
+             
+             {/* Product Preview */}
+             <div className="pt-16 max-w-5xl mx-auto">
+                <div className="rounded-xl border border-border bg-slate-50 p-4 shadow-2xl relative">
+                   <div className="aspect-video rounded-lg bg-white border border-border shadow-sm flex items-center justify-center overflow-hidden">
+                      <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent pointer-events-none" />
+                      <div className="flex flex-col items-center gap-4 text-slate-400">
+                         <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200">
+                            <Video className="h-6 w-6 text-primary" />
+                         </div>
+                         <p className="text-sm font-bold uppercase tracking-widest">Platform Discovery Preview</p>
+                      </div>
+                   </div>
                 </div>
-              </div>
-            </motion.div>
+             </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section id="features" className="bg-zinc-50 py-24 sm:py-32">
-          <div className="container mx-auto px-4 sm:px-6">
-            <div className="mb-16 text-center">
-              <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">Platform Capabilities</h2>
-              <p className="mt-4 text-zinc-600">Everything you need to secure funding or find your next unicorn.</p>
-            </div>
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                { title: "Real-time Verification", description: "Seamless government-backed Identity verification using robust APIs.", icon: ShieldCheck, color: "indigo" },
-                { title: "AI-Powered Matching", description: "Higher match precision with proprietary vector similarity engines.", icon: Zap, color: "emerald" },
-                { title: "Secure Data Rooms", description: "Encrypted virtual data rooms with precise granular access controls.", icon: MessageSquare, color: "purple" },
-                { title: "Native Video Chat", description: "Experience zero-lag, built-in WebRTC based video conferencing.", icon: Video, color: "blue" },
-                { title: "Portfolio Tracking", description: "Real-time telemetry and deal lifecycle management for investors.", icon: Rocket, color: "rose" },
-                { title: "Smart Contracts", description: "Automated logic for digital agreements and term sheet distributions.", icon: Sparkles, color: "amber" },
-              ].map((feature, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <Card className="border-none shadow-sm transition-all hover:shadow-xl hover:shadow-indigo-500/5 group relative overflow-hidden h-full bg-white">
-                    <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 bg-indigo-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <CardContent className="pt-8 px-8 pb-10 text-center sm:text-left relative z-10 flex flex-col items-center sm:items-start h-full">
-                      <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-50 text-indigo-600 shadow-sm border border-zinc-100 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 group-hover:rotate-6 group-hover:scale-110">
-                        <feature.icon className="h-7 w-7" />
-                      </div>
-                      <h3 className="mb-3 text-xl font-bold text-zinc-900">{feature.title}</h3>
-                      <p className="text-zinc-500 leading-relaxed font-medium">{feature.description}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+        {/* Features Grid */}
+        <section id="features" className="py-24 px-6 md:border-t md:border-slate-100">
+          <div className="max-w-[1280px] mx-auto">
+            <header className="text-center mb-16 space-y-4">
+               <h2 className="text-xs font-bold text-primary uppercase tracking-[0.2em]">Platform Pillars</h2>
+               <h3 className="text-4xl font-bold text-slate-900 tracking-tight">Everything you need to raise.</h3>
+            </header>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+               {[
+                 {
+                   title: "Intent-Based Matching",
+                   desc: "Proprietary AI scoring engine that prioritizes signal over noise, connecting only the perfect stage and sector matches.",
+                   icon: Zap
+                 },
+                 {
+                   title: "Institutional Vetting",
+                   desc: "Every profile undergoes a rigorous E-KYC process. No fake interest, no wasted meetings. Real verified data.",
+                   icon: ShieldCheck
+                 },
+                 {
+                   title: "Unified Diligence",
+                   desc: "Manage your full fundraising funnel, track interactions, and manage pitch documents from a single, secure vault.",
+                   icon: Lock
+                 }
+               ].map((f, i) => (
+                 <div key={i} className="space-y-4 p-8 rounded-xl border border-border bg-white shadow-sm hover:border-primary/20 transition-all hover:shadow-lg">
+                    <div className="h-12 w-12 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-primary">
+                       <f.icon size={24} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900">{f.title}</h3>
+                    <p className="text-slate-600 leading-relaxed text-sm">
+                       {f.desc}
+                    </p>
+                 </div>
+               ))}
             </div>
           </div>
+        </section>
+
+        {/* How It Works - RESTORED FEATURE */}
+        <section id="how-it-works" className="py-24 px-6 bg-slate-900 text-white overflow-hidden relative">
+           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_30%,#1d4ed8_0%,transparent_50%)] opacity-20" />
+           <div className="max-w-[1280px] mx-auto relative z-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                 <div className="space-y-8">
+                    <div className="space-y-4">
+                       <h2 className="text-xs font-bold text-primary uppercase tracking-[0.2em]">The Process</h2>
+                       <h3 className="text-4xl lg:text-5xl font-bold tracking-tight">From signup to term sheet.</h3>
+                    </div>
+                    <div className="space-y-8">
+                       {[
+                         { step: '01', title: 'Institutional Verification', desc: 'Secure your profile with our real-time E-KYC gateway.' },
+                         { step: '02', title: 'Targeted Discovery', desc: 'Our AI engine maps your data against our private investor network.' },
+                         { step: '03', title: 'Secure Diligence', desc: 'Execute meetings and data room access within a secure, encrypted dashboard.' }
+                       ].map((s, i) => (
+                         <div key={i} className="flex gap-6">
+                            <span className="text-2xl font-black text-primary/40 underline decoration-primary underline-offset-8">{s.step}</span>
+                            <div className="space-y-2">
+                               <h4 className="text-xl font-bold">{s.title}</h4>
+                               <p className="text-slate-400 text-sm leading-relaxed">{s.desc}</p>
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+                 <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+                    <div className="space-y-6 text-center">
+                       <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center mx-auto shadow-lg shadow-primary/20">
+                          <BarChart3 size={24} />
+                       </div>
+                       <h4 className="text-sm font-bold uppercase tracking-widest text-slate-400">Yield focused matching</h4>
+                       <div className="h-64 rounded-xl bg-slate-800/50 border border-white/5 flex items-center justify-center">
+                          <p className="text-xs text-slate-500 font-bold tracking-widest uppercase">Match Visualization Engine</p>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </section>
+
+        {/* Verification Engine - RESTORED FEATURE (TrustRadar) */}
+        <section id="trust" className="py-24 px-6">
+           <div className="max-w-[1280px] mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+                 <div className="lg:col-span-5 space-y-8">
+                    <header className="space-y-4">
+                       <h2 className="text-xs font-bold text-primary uppercase tracking-[0.2em]">Zero Trust Networking</h2>
+                       <h3 className="text-4xl font-bold text-slate-900 tracking-tight">The Trust Radar Engine.</h3>
+                    </header>
+                    <p className="text-lg text-slate-600 leading-relaxed">
+                       We score every participant across five critical dimension of institutional readiness. High scores unlock exclusive tier-1 deal flow and premium investor pools.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="p-4 rounded-lg bg-slate-50 border border-slate-100">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Verified</p>
+                          <p className="text-2xl font-bold text-slate-900">$2.4B+</p>
+                       </div>
+                       <div className="p-4 rounded-lg bg-slate-50 border border-slate-100">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Deals</p>
+                          <p className="text-2xl font-bold text-slate-900">420+</p>
+                       </div>
+                    </div>
+                 </div>
+                 <div className="lg:col-span-7 flex flex-col items-center">
+                    <div className="w-full max-w-md p-8 rounded-2xl bg-white border border-border shadow-2xl relative">
+                       <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                       <TrustRadar scores={{ identity: 95, financials: 88, team: 92, legal: 84, traction: 98 }} />
+                       <div className="mt-8 pt-8 border-t border-slate-100 flex items-center justify-between">
+                          <div className="space-y-1">
+                             <p className="text-xs font-bold text-slate-900">ELITE STATUS</p>
+                             <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Score: 91.4</p>
+                          </div>
+                          <Badge className="bg-emerald-50 text-emerald-700 border-none font-bold text-[10px]">VERIFIED ASSET</Badge>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </section>
+
+        {/* Platform Integrity Summary */}
+        <section className="py-24 px-6 bg-slate-50 border-y border-border">
+           <div className="max-w-[800px] mx-auto text-center space-y-8">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary">
+                 <ShieldCheck size={24} />
+              </div>
+              <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Built on Transparency and Trust</h2>
+              <p className="text-lg text-slate-600 leading-relaxed">
+                Startup Connect is a closed ecosystem. Every participant is verified through a rigorous institutional vetting process to ensure high-signal interactions and zero noise.
+              </p>
+           </div>
         </section>
       </main>
 
-      <footer className="border-t border-zinc-100 bg-white py-12">
-        <div className="container mx-auto px-4 text-center sm:px-6">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-indigo-600 text-white">
-              <Rocket className="h-4 w-4" />
-            </div>
-            <span className="font-bold tracking-tight">Startup Connect</span>
-          </div>
-          <div className="flex justify-center gap-6 mb-8 text-sm font-medium text-zinc-500">
-            <Link href="/about" className="hover:text-indigo-600 transition-colors">About Us</Link>
-            <Link href="#features" className="hover:text-indigo-600 transition-colors">Features</Link>
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Login</Link>
-          </div>
-          <p className="text-sm text-zinc-500">
-            © {new Date().getFullYear()} Startup Connect. All rights reserved. BTech Final Year Project.
-          </p>
+      {/* Professional Footer */}
+      <footer className="py-16 px-6 bg-white border-t border-border">
+        <div className="max-w-[1280px] mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
+           <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center text-white">
+                   <Rocket className="h-3 w-3" />
+                </div>
+                <span className="text-md font-bold tracking-tight text-slate-900 uppercase">Startup Connect</span>
+              </div>
+              <p className="text-sm text-slate-500 max-w-xs">Connecting the next generation of founders and investors with precision matches.</p>
+           </div>
+           <div className="grid grid-cols-2 md:grid-cols-3 gap-16">
+              <div className="space-y-4">
+                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Product</h4>
+                 <ul className="space-y-2">
+                    <li><Link href="/" className="text-sm text-slate-500 hover:text-primary transition-colors">Features</Link></li>
+                    <li><Link href="/pricing" className="text-sm text-slate-500 hover:text-primary transition-colors">Pricing</Link></li>
+                 </ul>
+              </div>
+              <div className="space-y-4">
+                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Company</h4>
+                 <ul className="space-y-2">
+                    <li><Link href="/about" className="text-sm text-slate-500 hover:text-primary transition-colors">About</Link></li>
+                    <li><Link href="/contact" className="text-sm text-slate-500 hover:text-primary transition-colors">Contact</Link></li>
+                 </ul>
+              </div>
+              <div className="space-y-4">
+                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Legal</h4>
+                 <ul className="space-y-2">
+                    <li><Link href="/privacy" className="text-sm text-slate-500 hover:text-primary transition-colors">Privacy</Link></li>
+                    <li><Link href="/terms" className="text-sm text-slate-500 hover:text-primary transition-colors">Terms</Link></li>
+                 </ul>
+              </div>
+           </div>
+        </div>
+        <div className="max-w-[1280px] mx-auto mt-16 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+           <p className="text-xs text-slate-400">© {new Date().getFullYear()} Startup Connect. All rights reserved.</p>
+           <div className="flex gap-6">
+              <div className="h-5 w-5 rounded bg-slate-100" />
+              <div className="h-5 w-5 rounded bg-slate-100" />
+              <div className="h-5 w-5 rounded bg-slate-100" />
+           </div>
         </div>
       </footer>
     </div>

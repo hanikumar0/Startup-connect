@@ -2,40 +2,64 @@ import mongoose from "mongoose";
 
 const meetingSchema = new mongoose.Schema(
     {
-        initiatorId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
-        },
-        guestId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
-        },
         title: {
             type: String,
             required: true,
+            trim: true,
         },
-        startTime: {
+        description: {
+            type: String,
+            trim: true,
+        },
+        startupId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Startup",
+            required: true,
+        },
+        investorId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Investor",
+            required: true,
+        },
+        requestedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
+        meetingDate: {
             type: Date,
             required: true,
         },
-        endTime: {
-            type: Date,
+        meetingTime: {
+            type: String,
             required: true,
+        },
+        duration: {
+            type: Number, // In minutes
+            default: 30,
+        },
+        timezone: {
+            type: String,
+            default: "UTC",
+        },
+        meetingLink: {
+            type: String,
         },
         status: {
             type: String,
-            enum: ["SCHEDULED", "ONGOING", "COMPLETED", "CANCELLED"],
-            default: "SCHEDULED",
+            enum: ["pending", "accepted", "rejected", "cancelled", "completed"],
+            default: "pending",
         },
-        roomId: {
-            type: String,
-            required: true,
-            unique: true,
+        conversationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Conversation",
         },
     },
     { timestamps: true }
 );
+
+// Index for quick lookups
+meetingSchema.index({ startupId: 1, meetingDate: 1 });
+meetingSchema.index({ investorId: 1, meetingDate: 1 });
 
 export default mongoose.model("Meeting", meetingSchema);

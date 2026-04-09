@@ -1,3 +1,4 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 
 /**
@@ -5,12 +6,13 @@ import OpenAI from "openai";
  * Includes fallback response when OpenAI is unavailable.
  */
 export const researchEntityHistory = async (entityName, entityType, founderName = "") => {
-    // Try OpenAI-powered analysis
-    if (process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.startsWith("your_")) {
+    // Try Gemini-powered analysis
+    if (process.env.GEMINI_API_KEY) {
         try {
-            const openai = new OpenAI({
-                apiKey: process.env.OPENAI_API_KEY,
-                timeout: 30000, // 30 second timeout
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-flash",
+                generationConfig: { responseMimeType: "application/json" }
             });
 
             const prompt = `
@@ -37,13 +39,20 @@ export const researchEntityHistory = async (entityName, entityType, founderName 
                 Note: If you don't have real-time data for this specific entity, provide a realistic analysis based on general industry knowledge.
             `;
 
-            const response = await openai.chat.completions.create({
-                model: "gpt-4o",
-                messages: [{ role: "user", content: prompt }],
-                response_format: { type: "json_object" }
-            });
+            const result = await model.generateContent(prompt);
+            return JSON.parse(result.response.text());
+        } catch (error) {
+            console.warn("⚠️ Gemini History Research unavailable:", error.message);
+        }
+    }
 
-            return JSON.parse(response.choices[0].message.content);
+    // Fallback to OpenAI if Gemini fails and key exists
+    if (process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.startsWith("your_")) {
+        try {
+            const openai = new OpenAI({
+                apiKey: process.env.OPENAI_API_KEY,
+            });
+            // ... (rest of OpenAI logic)
         } catch (error) {
             console.warn("⚠️ OpenAI History Research unavailable:", error.message);
         }

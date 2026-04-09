@@ -14,7 +14,7 @@ const dealSchema = new mongoose.Schema(
         },
         investorProfile: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "InvestorProfile"
+            ref: "Investor"
         },
         stage: {
             type: String,

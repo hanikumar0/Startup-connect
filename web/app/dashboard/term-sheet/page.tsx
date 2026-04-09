@@ -10,7 +10,8 @@ import {
     Gavel,
     CheckCircle2,
     Shield,
-    TrendingUp
+    TrendingUp,
+    IndianRupee
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiFetch } from "@/lib/api";
 
 export default function TermSheetBuilder() {
     const [deals, setDeals] = useState<any[]>([]);
@@ -136,190 +138,219 @@ export default function TermSheetBuilder() {
                 </TabsList>
 
                 <TabsContent value="economics">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        {/* Inputs Sidebar */}
-                        <div className="lg:col-span-4 space-y-6">
-                            <Card className="border-none shadow-sm h-full dark:bg-slate-900">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                                    <CardTitle className="text-lg">Economics</CardTitle>
-                                    {deals.length > 0 && (
-                                        <select
-                                            className="text-[10px] bg-slate-100 dark:bg-slate-800 border-none rounded-md px-2 py-1 font-bold outline-none cursor-pointer"
-                                            value={selectedDealId}
-                                            onChange={(e) => handleDealSelect(e.target.value)}
-                                        >
-                                            {deals.map((d: any) => (
-                                                <option key={d._id} value={d._id}>
-                                                    Deal: {d.investor?.name || "Active"}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    )}
-                                </CardHeader>
-                                <CardContent className="space-y-8">
-                                    <div className="space-y-4">
-                                        <Label className="text-xs font-black uppercase text-slate-400">Pre-Money Valuation ($)</Label>
-                                        <Input
-                                            type="number"
-                                            value={valuation}
-                                            onChange={(e) => setValuation(Number(e.target.value))}
-                                            className="h-12 text-lg font-bold bg-slate-50 dark:bg-slate-800 border-none rounded-xl"
-                                        />
-                                        <Slider
-                                            value={[valuation]}
-                                            max={20000000}
-                                            step={100000}
-                                            onValueChange={(v) => setValuation(v[0])}
-                                        />
+                    <div className="space-y-6">
+                        <Card className="border-none shadow-sm bg-indigo-50/40 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30">
+                            <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+                                        <TrendingUp className="h-5 w-5" />
                                     </div>
-
-                                    <div className="space-y-4">
-                                        <Label className="text-xs font-black uppercase text-slate-400">Investment Amount ($)</Label>
-                                        <Input
-                                            type="number"
-                                            value={investment}
-                                            onChange={(e) => setInvestment(Number(e.target.value))}
-                                            className="h-12 text-lg font-bold bg-slate-50 dark:bg-slate-800 border-none rounded-xl"
-                                        />
-                                        <Slider
-                                            value={[investment]}
-                                            max={5000000}
-                                            step={50000}
-                                            onValueChange={(v) => setInvestment(v[0])}
-                                        />
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Live Deal Pipeline</p>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Sync terms with an active investor lead</p>
                                     </div>
-
-                                    <div className="space-y-4">
-                                        <Label className="text-xs font-black uppercase text-slate-400">Option Pool (%)</Label>
-                                        <div className="flex items-center gap-4">
-                                            <Slider
-                                                value={[optionPool]}
-                                                max={30}
-                                                step={1}
-                                                onValueChange={(v) => setOptionPool(v[0])}
-                                                className="flex-1"
-                                            />
-                                            <span className="text-sm font-bold w-8">{optionPool}%</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <Label className="text-xs font-black uppercase text-slate-400">Future Dilution (%)</Label>
-                                        <div className="flex items-center gap-4">
-                                            <Slider
-                                                value={[futureDilution]}
-                                                max={50}
-                                                step={1}
-                                                onValueChange={(v) => setFutureDilution(v[0])}
-                                                className="flex-1"
-                                            />
-                                            <span className="text-sm font-bold w-8">{futureDilution}%</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-xs font-black uppercase text-slate-400">Governance & Rights</h3>
-                                            <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-600 border-indigo-200">AI Suggested</Badge>
-                                        </div>
-                                        {[
-                                            { label: "1x Non-Participating Preference", active: true, desc: "Standard for Seed rounds. Protects downside while aligning exit upside." },
-                                            { label: "Board Seat: Lead Investor", active: true, desc: "Lead investor usually requests one board seat for oversight." },
-                                            { label: "Pro-rata Protection", active: true, desc: "Allows investors to maintain their stake in future rounds." },
-                                            { label: "Veto Rights (Protective Provisions)", active: false, desc: "Requires investor consent for major corporate changes." },
-                                        ].map((clause, i) => (
-                                            <div key={i} className="space-y-2">
-                                                <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 group cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
-                                                    <span className={`text-sm font-bold ${clause.active ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>{clause.label}</span>
-                                                    <div className={`h-5 w-5 rounded-full ${clause.active ? 'bg-indigo-600 text-white' : 'border-2 border-slate-200'} flex items-center justify-center`}>
-                                                        {clause.active && <CheckCircle2 size={12} />}
-                                                    </div>
-                                                </div>
-                                                {clause.active && (
-                                                    <p className="text-[11px] text-slate-500 px-2 leading-relaxed">{clause.desc}</p>
-                                                )}
-                                            </div>
+                                </div>
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    <select
+                                        className="flex-1 sm:w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                                        value={selectedDealId}
+                                        onChange={(e) => handleDealSelect(e.target.value)}
+                                    >
+                                        <option value="">Manual Entry Mode...</option>
+                                        {deals.map((d: any) => (
+                                            <option key={d._id} value={d._id}>
+                                                {d.investor?.name || d.investorProfile?.firmName} (${(d.amount / 1000).toFixed(0)}k)
+                                            </option>
                                         ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                    </select>
+                                    {selectedDealId && (
+                                        <Badge className="bg-emerald-500 text-white border-none h-10 px-3 flex items-center gap-1.5 font-bold animate-pulse">
+                                            <CheckCircle2 className="h-3.5 w-3.5" />
+                                            Live
+                                        </Badge>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                            <Card className="border-none shadow-sm dark:bg-indigo-950/20 bg-indigo-50/50 border border-indigo-100/50">
-                                <CardContent className="p-6 space-y-4">
-                                    <div className="flex items-center gap-2 text-indigo-600">
-                                        <Shield size={16} />
-                                        <span className="text-sm font-black uppercase">AI Advisor</span>
-                                    </div>
-                                    <p className="text-xs text-indigo-700/80 leading-relaxed font-medium">
-                                        "Analyzing structural terms. Comparing a {investorOwnershipInitial.toFixed(1)}% stake for ${investment.toLocaleString()} against current market trends. Ensure 'Most Favored Nation' clauses are reviewed if syndicate participation is expected."
-                                    </p>
-                                    <Button size="sm" className="w-full bg-indigo-600 text-white rounded-lg text-xs h-8">Apply Market Standard</Button>
-                                </CardContent>
-                            </Card>
-                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            {/* Inputs Sidebar */}
+                            <div className="lg:col-span-4 space-y-6">
+                                <Card className="border-none shadow-sm h-full dark:bg-slate-900">
+                                    <CardHeader className="pb-0">
+                                        <CardTitle className="text-lg">Economics</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-8">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Pre-Money Valuation (₹)</Label>
+                                                <Badge variant="outline" className="text-[9px] font-bold text-indigo-500 bg-indigo-50/30 border-none">Real-Time</Badge>
+                                            </div>
+                                            <Input
+                                                type="number"
+                                                value={valuation}
+                                                onChange={(e) => setValuation(Number(e.target.value))}
+                                                className="h-12 text-lg font-bold bg-slate-50 dark:bg-slate-800 border-none rounded-xl"
+                                            />
+                                            <Slider
+                                                value={[valuation]}
+                                                max={20000000}
+                                                step={100000}
+                                                onValueChange={(v) => setValuation(v[0])}
+                                            />
+                                        </div>
 
-                        {/* Model Visualization */}
-                        <div className="lg:col-span-8 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {[
-                                    { label: "Post-Money", value: `$${(postMoney / 1000000).toFixed(1)}M`, icon: TrendingUp },
-                                    { label: "Investor Stake", value: `${investorOwnershipInitial.toFixed(1)}%`, icon: PieChartIcon },
-                                    { label: "Fully Diluted Stake", value: `${investorEquity.toFixed(1)}%`, icon: FileText },
-                                ].map((stat, i) => (
-                                    <Card key={i} className="border-none shadow-sm dark:bg-slate-900">
-                                        <CardContent className="p-6">
-                                            <p className="text-[10px] font-black uppercase text-slate-400 mb-2">{stat.label}</p>
-                                            <h4 className="text-2xl font-black text-slate-900 dark:text-white">{stat.value}</h4>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Investment Amount (₹)</Label>
+                                                {selectedDealId && <Badge variant="outline" className="text-[9px] font-bold text-emerald-500 bg-emerald-50/30 border-none">Pipeline Sync</Badge>}
+                                            </div>
+                                            <Input
+                                                type="number"
+                                                value={investment}
+                                                onChange={(e) => setInvestment(Number(e.target.value))}
+                                                className="h-12 text-lg font-bold bg-slate-50 dark:bg-slate-800 border-none rounded-xl"
+                                            />
+                                            <Slider
+                                                value={[investment]}
+                                                max={5000000}
+                                                step={50000}
+                                                onValueChange={(v) => setInvestment(v[0])}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <Label className="text-xs font-black uppercase text-slate-400">Option Pool (%)</Label>
+                                            <div className="flex items-center gap-4">
+                                                <Slider
+                                                    value={[optionPool]}
+                                                    max={30}
+                                                    step={1}
+                                                    onValueChange={(v) => setOptionPool(v[0])}
+                                                    className="flex-1"
+                                                />
+                                                <span className="text-sm font-bold w-8">{optionPool}%</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <Label className="text-xs font-black uppercase text-slate-400">Future Dilution (%)</Label>
+                                            <div className="flex items-center gap-4">
+                                                <Slider
+                                                    value={[futureDilution]}
+                                                    max={50}
+                                                    step={1}
+                                                    onValueChange={(v) => setFutureDilution(v[0])}
+                                                    className="flex-1"
+                                                />
+                                                <span className="text-sm font-bold w-8">{futureDilution}%</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xs font-black uppercase text-slate-400">Governance & Rights</h3>
+                                                <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-600 border-indigo-200">AI Suggested</Badge>
+                                            </div>
+                                            {[
+                                                { label: "1x Non-Participating Preference", active: true, desc: "Standard for Seed rounds. Protects downside while aligning exit upside." },
+                                                { label: "Board Seat: Lead Investor", active: true, desc: "Lead investor usually requests one board seat for oversight." },
+                                                { label: "Pro-rata Protection", active: true, desc: "Allows investors to maintain their stake in future rounds." },
+                                                { label: "Veto Rights (Protective Provisions)", active: false, desc: "Requires investor consent for major corporate changes." },
+                                            ].map((clause, i) => (
+                                                <div key={i} className="space-y-2">
+                                                    <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 group cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                                                        <span className={`text-sm font-bold ${clause.active ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>{clause.label}</span>
+                                                        <div className={`h-5 w-5 rounded-full ${clause.active ? 'bg-indigo-600 text-white' : 'border-2 border-slate-200'} flex items-center justify-center`}>
+                                                            {clause.active && <CheckCircle2 size={12} />}
+                                                        </div>
+                                                    </div>
+                                                    {clause.active && (
+                                                        <p className="text-[11px] text-slate-500 px-2 leading-relaxed">{clause.desc}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border-none shadow-sm dark:bg-indigo-950/20 bg-indigo-50/50 border border-indigo-100/50">
+                                    <CardContent className="p-6 space-y-4">
+                                        <div className="flex items-center gap-2 text-indigo-600">
+                                            <Shield size={16} />
+                                            <span className="text-sm font-black uppercase">AI Advisor</span>
+                                        </div>
+                                        <p className="text-xs text-indigo-700/80 leading-relaxed font-medium">
+                                            "Analyzing structural terms. Comparing a {investorOwnershipInitial.toFixed(1)}% stake for ${investment.toLocaleString()} against current market trends. Ensure 'Most Favored Nation' clauses are reviewed if syndicate participation is expected."
+                                        </p>
+                                        <Button size="sm" className="w-full bg-indigo-600 text-white rounded-lg text-xs h-8">Apply Market Standard</Button>
+                                    </CardContent>
+                                </Card>
                             </div>
 
-                            <Card className="border-none shadow-xl bg-slate-900 text-white overflow-hidden relative min-h-[400px]">
-                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-600/20" />
-                                <CardHeader className="relative z-10 border-b border-white/10">
-                                    <CardTitle>Cap Table Model</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-12 relative z-10 flex flex-col md:flex-row items-center justify-around gap-12">
-                                    <motion.div
-                                        className="h-48 w-48 rounded-full bg-indigo-500/80 border-4 border-indigo-400 flex flex-col items-center justify-center text-center shadow-2xl shadow-indigo-500/20"
-                                        animate={{ scale: (founderEquity / 100) + 0.5 }}
-                                    >
-                                        <span className="text-sm font-bold uppercase tracking-widest text-indigo-100">Founders</span>
-                                        <span className="text-4xl font-black">{founderEquity.toFixed(1)}%</span>
-                                    </motion.div>
+                            {/* Model Visualization */}
+                            <div className="lg:col-span-8 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {[
+                                        { label: "Post-Money", value: `$${(postMoney / 1000000).toFixed(1)}M`, icon: TrendingUp },
+                                        { label: "Investor Stake", value: `${investorOwnershipInitial.toFixed(1)}%`, icon: PieChartIcon },
+                                        { label: "Fully Diluted Stake", value: `${investorEquity.toFixed(1)}%`, icon: FileText },
+                                    ].map((stat, i) => (
+                                        <Card key={i} className="border-none shadow-sm dark:bg-slate-900">
+                                            <CardContent className="p-6">
+                                                <p className="text-[10px] font-black uppercase text-slate-400 mb-2">{stat.label}</p>
+                                                <h4 className="text-2xl font-black text-slate-900 dark:text-white">{stat.value}</h4>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
 
-                                    <div className="flex flex-col gap-4 text-white/40 font-black text-[10px] uppercase tracking-tighter">
-                                        <ChevronRight size={24} />
-                                        <span>Diluted</span>
-                                    </div>
+                                <Card className="border-none shadow-xl bg-slate-900 text-white overflow-hidden relative min-h-[400px]">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-600/20" />
+                                    <CardHeader className="relative z-10 border-b border-white/10">
+                                        <CardTitle>Cap Table Model</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-12 relative z-10 flex flex-col md:flex-row items-center justify-around gap-12">
+                                        <motion.div
+                                            className="h-48 w-48 rounded-full bg-indigo-500/80 border-4 border-indigo-400 flex flex-col items-center justify-center text-center shadow-2xl shadow-indigo-500/20"
+                                            animate={{ scale: (founderEquity / 100) + 0.5 }}
+                                        >
+                                            <span className="text-sm font-bold uppercase tracking-widest text-indigo-100">Founders</span>
+                                            <span className="text-4xl font-black">{founderEquity.toFixed(1)}%</span>
+                                        </motion.div>
 
-                                    <motion.div
-                                        className="h-48 w-48 rounded-full bg-emerald-500/80 border-4 border-emerald-400 flex flex-col items-center justify-center text-center shadow-2xl shadow-emerald-500/20"
-                                        animate={{ scale: (investorEquity / 100) + 0.5 }}
-                                    >
-                                        <span className="text-sm font-bold uppercase tracking-widest text-emerald-100">Investors</span>
-                                        <span className="text-4xl font-black">{investorEquity.toFixed(1)}%</span>
-                                    </motion.div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-none shadow-sm dark:bg-slate-900">
-                                <CardContent className="p-6">
-                                    <div className="flex gap-6 items-start p-6 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30">
-                                        <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
-                                            <Shield />
+                                        <div className="flex flex-col gap-4 text-white/40 font-black text-[10px] uppercase tracking-tighter">
+                                            <ChevronRight size={24} />
+                                            <span>Diluted</span>
                                         </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-900 dark:text-white">Market Benchmarking</h4>
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-                                                This offer is being analyzed against recent Seed deals.
-                                                A {investorOwnershipInitial.toFixed(1)}% stake is being evaluated within the standard 10-25% venture range for initial rounds.
-                                            </p>
+
+                                        <motion.div
+                                            className="h-48 w-48 rounded-full bg-emerald-500/80 border-4 border-emerald-400 flex flex-col items-center justify-center text-center shadow-2xl shadow-emerald-500/20"
+                                            animate={{ scale: (investorEquity / 100) + 0.5 }}
+                                        >
+                                            <span className="text-sm font-bold uppercase tracking-widest text-emerald-100">Investors</span>
+                                            <span className="text-4xl font-black">{investorEquity.toFixed(1)}%</span>
+                                        </motion.div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border-none shadow-sm dark:bg-slate-900">
+                                    <CardContent className="p-6">
+                                        <div className="flex gap-6 items-start p-6 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30">
+                                            <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+                                                <Shield />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-900 dark:text-white">Market Benchmarking</h4>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
+                                                    This offer is being analyzed against recent Seed deals.
+                                                    A {investorOwnershipInitial.toFixed(1)}% stake is being evaluated within the standard 10-25% venture range for initial rounds.
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </div>
                     </div>
                 </TabsContent>
@@ -368,7 +399,7 @@ export default function TermSheetBuilder() {
                                     )}
 
                                     <div className="space-y-4">
-                                        <Label className="text-xs font-black uppercase text-slate-400">Exit Valuation ($)</Label>
+                                        <Label className="text-xs font-black uppercase text-slate-400">Exit Valuation (₹)</Label>
                                         <Input
                                             type="number"
                                             value={exitValuation}
@@ -399,14 +430,14 @@ export default function TermSheetBuilder() {
                                 <Card className="border-none shadow-sm dark:bg-slate-900 p-8 border-l-4 border-l-indigo-600">
                                     <CardContent className="p-0">
                                         <p className="text-xs font-bold text-slate-400 uppercase mb-2">Founder Payout</p>
-                                        <h4 className="text-4xl font-black text-slate-900 dark:text-white">${(founderPayout / 1000000).toFixed(1)}M</h4>
+                                        <h4 className="text-4xl font-black text-slate-900 dark:text-white">₹{(founderPayout / 10000000).toFixed(1)}Cr</h4>
                                     </CardContent>
                                 </Card>
 
                                 <Card className="border-none shadow-sm dark:bg-slate-900 p-8 border-l-4 border-l-emerald-600">
                                     <CardContent className="p-0">
                                         <p className="text-xs font-bold text-slate-400 uppercase mb-2">Investor Payout</p>
-                                        <h4 className="text-4xl font-black text-slate-900 dark:text-white">${(investorPayout / 1000000).toFixed(1)}M</h4>
+                                        <h4 className="text-4xl font-black text-slate-900 dark:text-white">₹{(investorPayout / 10000000).toFixed(1)}Cr</h4>
                                     </CardContent>
                                 </Card>
                             </div>
@@ -417,7 +448,7 @@ export default function TermSheetBuilder() {
                                     <div className="space-y-6">
                                         <div className="flex items-center justify-between">
                                             <span className="text-sm font-medium text-slate-500">Liquidation Preference</span>
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white">${(investment / 1000).toLocaleString()}k (1.0x Fixed)</span>
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white">₹{(investment / 100000).toLocaleString()}L (1.0x Fixed)</span>
                                         </div>
                                         <div className="space-y-2">
                                             <div className="h-8 w-full rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden flex">

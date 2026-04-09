@@ -26,7 +26,20 @@ export default function MeetingCenter() {
 
     useEffect(() => {
         fetchConnections();
+        fetchMeetings();
     }, []);
+
+    const fetchMeetings = async () => {
+        try {
+            const response = await apiFetch("/api/meetings/my-meetings");
+            const data = await response.json();
+            if (data.success) {
+                setMeetings(data.meetings);
+            }
+        } catch (error) {
+            console.error("Error fetching meetings:", error);
+        }
+    };
 
     const fetchConnections = async () => {
         try {
@@ -44,25 +57,34 @@ export default function MeetingCenter() {
         e.preventDefault();
         setIsLoading(true);
 
-        // Mocking the creation for now, we'll add the new meeting to the state
-        const newMeeting = {
-            id: Math.random().toString(36).substr(2, 9),
-            title: formData.title,
-            partner: connections.find((c: any) => c.id === formData.partnerId)?.name || "Partner",
-            date: formData.date,
-            time: formData.time,
-            status: "SCHEDULED",
-            roomId: `room-${Math.random().toString(36).substr(2, 6)}`
-        };
+        const [year, month, day] = formData.date.split("-");
+        const [hour, minute] = formData.time.split(":");
+        const startTime = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute)));
 
-        // Simulate API call delay
-        setTimeout(() => {
-            setMeetings((prev): any => [...prev, newMeeting]);
+        try {
+            const response = await apiFetch("/api/meetings/schedule", {
+                method: "POST",
+                body: JSON.stringify({
+                    guestId: formData.partnerId,
+                    title: formData.title,
+                    startTime: startTime.toISOString()
+                }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                setMeetings((prev): any => [...prev, data.meeting]);
+                setIsModalOpen(false);
+                setFormData({ title: "", partnerId: "", date: "", time: "" });
+                alert("Meeting Scheduled Successfully!");
+            } else {
+                alert(data.message || "Failed to schedule meeting");
+            }
+        } catch (error) {
+            console.error("Error scheduling meeting:", error);
+            alert("Error scheduling meeting.");
+        } finally {
             setIsLoading(false);
-            setIsModalOpen(false);
-            setFormData({ title: "", partnerId: "", date: "", time: "" });
-            alert("Meeting Scheduled Successfully!");
-        }, 800);
+        }
     };
 
     return (
@@ -80,7 +102,7 @@ export default function MeetingCenter() {
             {meetings.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {meetings.map((meeting: any) => (
-                        <Card key={meeting.id} className="border-none shadow-xl hover:shadow-2xl transition-all bg-white overflow-hidden group">
+                        <Card key={meeting._id || meeting.id} className="border-none shadow-xl hover:shadow-2xl transition-all bg-white overflow-hidden group">
                             <div className="h-1.5 bg-indigo-600 w-full" />
                             <CardHeader className="pb-2">
                                 <div className="flex justify-between items-start">
@@ -98,11 +120,11 @@ export default function MeetingCenter() {
                                 <div className="space-y-3 mt-4">
                                     <div className="flex items-center gap-3 text-sm text-slate-600 font-bold">
                                         <CalendarIcon size={16} className="text-indigo-600" />
-                                        {meeting.date}
+                                        {new Date(meeting.startTime || meeting.date).toLocaleDateString()}
                                     </div>
                                     <div className="flex items-center gap-3 text-sm text-slate-600 font-black font-mono">
                                         <Clock size={16} className="text-indigo-600" />
-                                        {meeting.time}
+                                        {meeting.startTime ? new Date(meeting.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : meeting.time}
                                     </div>
                                 </div>
 

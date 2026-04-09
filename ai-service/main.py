@@ -1,161 +1,151 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-from contextlib import asynccontextmanager
-import uvicorn
-import time
-import logging
-import os
-import subprocess
+from typing import List, Optional
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer
+import fitz  # PyMuPDF
+import re
 from engine import MatchingEngine
 from dotenv import load_dotenv
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-log = logging.getLogger("ai-service")
+import os
 
-# Load environment variables from the root project directory (1 level up)
-ROOT_ENV = os.path.join(os.path.dirname(__file__), "..", ".env")
-load_dotenv(ROOT_ENV, override=True)
+# Try to load from current dir, then from root
+load_dotenv()
+if not os.getenv("GEMINI_API_KEY"):
+    load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-# ─── Port Cleanup ───
-def cleanup_port(port: int):
-    try:
-        if os.name == 'nt':
-            # Use netstat to find PID on port
-            cmd = f'netstat -ano | findstr :{port}'
-            output = subprocess.check_output(cmd, shell=True).decode()
-            for line in output.strip().split('\n'):
-                parts = line.strip().split()
-                if len(parts) > 4 and parts[1].endswith(f':{port}'):
-                    pid = parts[-1]
-                    if pid != '0' and pid != str(os.getpid()):
-                        log.info(f"🧹 Clearing zombie process {pid} on port {port}...")
-                        subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
-    except Exception:
-        pass # Port is likely free or taskkill failed silently
+app = FastAPI(title="Startup Connect AI Engine")
 
-# ─── Lifespan ───
-engine: Optional[MatchingEngine] = None
+# Load engine which handles model and LLM
+matching_engine = MatchingEngine()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global engine
-    log.info("🚀 Loading AI matching engine...")
-    try:
-        engine = MatchingEngine()
-        log.info("✅ AI engine loaded successfully.")
-    except Exception as e:
-        log.error(f"❌ Failed to load AI engine: {e}")
-        engine = None
-    yield
-    # Clean up (if needed)
-
-app = FastAPI(
-    title="Startup Connect AI Service",
-    version="1.0.0",
-    docs_url="/docs" if __name__ == "__main__" else None,
-    lifespan=lifespan
-)
-
-# ─── CORS ───
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ─── Request Timeout Middleware ───
-@app.middleware("http")
-async def timeout_middleware(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    duration = time.time() - start_time
-    response.headers["X-Response-Time"] = f"{duration:.3f}s"
-    if duration > 10:
-        log.warning(f"Slow request: {request.method} {request.url.path} took {duration:.1f}s")
-    return response
-
-# ─── Global Exception Handler ───
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    log.error(f"Unhandled error on {request.method} {request.url.path}: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={"success": False, "detail": "Internal server error. The AI service encountered an unexpected issue."}
-    )
-
-def get_engine() -> MatchingEngine:
-    if engine is None:
-        raise HTTPException(status_code=503, detail="AI engine is not available. Please try again later.")
-    return engine
-
-# ─── Models ───
-class Profile(BaseModel):
-    id: str
-    text_content: str  # Combined bio, industry, tags, etc.
-    metadata: Dict[str, Any]
-
-class MatchRequest(BaseModel):
-    source_profile: Profile
-    candidate_profiles: List[Profile]
-    top_n: int = 10
-
-class PitchAnalysisRequest(BaseModel):
-    pitch_text: str
-
-class DocumentAnalysisRequest(BaseModel):
-    doc_name: str
-    doc_content: str  # Simulated content for MVP
-
-# ─── Routes ───
+@app.get("/")
+async def root():
+    return {"status": "online", "service": "Startup Connect AI Engine"}
 
 @app.get("/health")
 async def health():
+    return {"status": "healthy"}
+
+class StartupData(BaseModel):
+    id: str
+    name: str
+    description: str
+    industry: str
+    stage: str
+    tags: List[str]
+
+class InvestorData(BaseModel):
+    id: str
+    name: str
+    thesis: str
+    preferred_industries: List[str]
+    preferred_stages: List[str]
+
+# --- Feature 1 & 2: Matching & Recommendations ---
+
+@app.post("/ai/match")
+async def calculate_match(startup: StartupData, investor: InvestorData):
+    # Prepare data for engine
+    class Entity:
+        def __init__(self, text, metadata=None):
+            self.text_content = text
+            self.metadata = metadata or {}
+            self.id = "temp"
+
+    source = Entity(f"{startup.industry} {startup.stage} {startup.description} {' '.join(startup.tags)}", {
+        "industry": startup.industry,
+        "stage": startup.stage
+    })
+    candidate = Entity(f"{' '.join(investor.preferred_industries)} {' '.join(investor.preferred_stages)} {investor.thesis}", {
+        "industry": investor.preferred_industries[0] if investor.preferred_industries else ""
+    })
+
+    # Use engine for core logic
+    results = matching_engine.calculate_matches(source, [candidate], 1)
+    
+    if not results:
+        return {"score": 0, "reasons": ["No data provided"]}
+
+    match = results[0]
+    
+    # Extract reasons (re-using old logic for specific tags + adding AI reasoning)
+    reasons = [match["reasoning"]]
+    if startup.industry in investor.preferred_industries:
+        reasons.append(f"Matching Sector: {startup.industry}")
+    
     return {
-        "status": "healthy" if engine is not None else "degraded",
-        "engine_loaded": engine is not None,
-        "timestamp": time.time(),
+        "score": int(match["score"]),
+        "reasons": reasons
     }
 
-@app.post("/match")
-async def get_matches(request: MatchRequest):
-    eng = get_engine()
-    try:
-        results = eng.calculate_matches(
-            request.source_profile, 
-            request.candidate_profiles, 
-            request.top_n
-        )
-        return {"success": True, "matches": results}
-    except Exception as e:
-        log.error(f"Match error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# --- Feature 3: Pitch Deck Analysis ---
 
-@app.post("/analyze-document")
-async def analyze_document(request: DocumentAnalysisRequest):
-    eng = get_engine()
-    try:
-        results = eng.analyze_document(request.doc_name, request.doc_content)
-        return {"success": True, "analysis": results}
-    except Exception as e:
-        log.error(f"Document analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/ai/analyze-pitch")
+async def analyze_pitch(file: UploadFile = File(...)):
+    content = await file.read()
+    doc = fitz.open(stream=content, filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    
+    # Basic Extraction Logic using regex
+    funding = re.search(r'\$(\d+[\.,]?\d*[mkM]?)', text)
+    market = re.search(r'market size[:\s]+(\d+[\.,]?\d*[mkM]?)', text, re.I)
+    
+    analysis = {
+        "funding_detected": funding.group(1) if funding else "Undisclosed",
+        "market_size_detected": market.group(1) if market else "Not specified",
+        "market_confidence": 0.85 if market else 0.4,
+        "summary": text[:500] + "..." if len(text) > 500 else text,
+        "entities": ["AI", "SaaS"] if "AI" in text.upper() else []
+    }
+    
+    return analysis
 
-@app.post("/analyze-pitch")
-async def analyze_pitch(request: PitchAnalysisRequest):
-    eng = get_engine()
-    try:
-        results = eng.analyze_pitch(request.pitch_text)
-        return {"success": True, "analysis": results}
-    except Exception as e:
-        log.error(f"Pitch analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# --- Feature 4: Quality & Activity Scores ---
+
+@app.post("/ai/scores")
+async def calculate_scores(data: dict):
+    # Comprehensive scoring logic
+    quality = 0
+    if data.get("team_size", 0) > 2: quality += 20
+    if data.get("revenue", 0) > 10000: quality += 30
+    if data.get("onboarding_completed"): quality += 20
+    if data.get("pitch_deck"): quality += 30
+    
+    return {
+        "quality_score": min(quality, 100),
+        "activity_score": data.get("interactions", 0) * 10
+    }
+
+# --- Feature 5: Semantic Search ---
+
+@app.post("/ai/search")
+async def semantic_search(query: str, items: List[dict]):
+    query_embedding = matching_engine.model.encode([query])
+    item_texts = [f"{i.get('name')} {i.get('description')} {' '.join(i.get('tags', []))}" for i in items]
+    item_embeddings = matching_engine.model.encode(item_texts)
+    
+    similarities = cosine_similarity(query_embedding, item_embeddings)[0]
+    
+    # Sort and return
+    results = sorted(zip(items, similarities), key=lambda x: x[1], reverse=True)
+    return [r[0] for r in results if r[1] > 0.3]
+
+# --- Feature 6: Text Improvement (Gemini) ---
+
+class ImproveTextRequest(BaseModel):
+    text: str
+    type: str # startup_vision or investor_thesis
+
+@app.post("/ai/improve-text")
+async def improve_text(request: ImproveTextRequest):
+    improved = matching_engine.improve_text(request.text, request.type)
+    return {"improved_text": improved}
 
 if __name__ == "__main__":
-    cleanup_port(8000)
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

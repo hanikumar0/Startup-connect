@@ -110,3 +110,48 @@ model Meeting {
   meetingLink String?
   createdAt   DateTime @default(now())
 }
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  REPLIED
+  JOINED
+}
+
+enum LeadType {
+  STARTUP
+  INVESTOR
+}
+
+model Lead {
+  id        String     @id @default(uuid())
+  name      String
+  email     String     @unique
+  linkedin  String?
+  company   String?
+  type      LeadType
+  industry  String?
+  source    String?
+  status    LeadStatus @default(NEW)
+  notes     String?    @db.Text
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+enum CampaignStatus {
+  DRAFT
+  SENT
+}
+
+model Campaign {
+  id         String         @id @default(uuid())
+  name       String
+  type       LeadType
+  subject    String
+  message    String         @db.Text
+  status     CampaignStatus @default(DRAFT)
+  sentCount  Int            @default(0)
+  replyCount Int            @default(0)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}

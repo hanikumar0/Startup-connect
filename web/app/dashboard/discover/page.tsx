@@ -150,7 +150,8 @@ function DiscoverContent() {
                 body: JSON.stringify({
                     investorId,
                     stage: "PROSPECT",
-                    amount: 50000, // Default mock value
+                    amount: 5000000,
+
                     priority: "MEDIUM"
                 }),
             });
@@ -449,7 +450,7 @@ function DiscoverContent() {
                                                 </Badge>
                                                 <span className="text-slate-300">•</span>
                                                 <span className="text-xs text-slate-500">
-                                                    {item.fundingStage || (item.minInvestment ? `$${(item.minInvestment / 1000).toFixed(0)}k+` : "Seed")}
+                                                    {item.fundingStage || (item.minInvestment ? `₹${(item.minInvestment / 100000).toFixed(0)}L+` : "Seed")}
                                                 </span>
                                                 {item.website && (
                                                     <>

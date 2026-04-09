@@ -1,38 +1,49 @@
 import mongoose from "mongoose";
 
 const notificationSchema = new mongoose.Schema(
-    {
-        recipient: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
-        },
-        sender: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-        },
-        type: {
-            type: String,
-            enum: ["MATCH", "MESSAGE", "MEETING", "SYSTEM", "INVESTMENT_INTEREST"],
-            required: true,
-        },
-        title: {
-            type: String,
-            required: true,
-        },
-        message: {
-            type: String,
-            required: true,
-        },
-        isRead: {
-            type: Boolean,
-            default: false,
-        },
-        link: {
-            type: String,
-        },
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
-    { timestamps: true }
+    type: {
+      type: String,
+      enum: [
+        "match_found",
+        "new_message",
+        "meeting_request",
+        "meeting_accepted",
+        "meeting_rejected",
+        "profile_viewed",
+        "startup_saved",
+        "investor_saved",
+        "pitch_downloaded",
+        "subscription_updated",
+        "system_alert"
+      ],
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+    },
+    message: {
+      type: String,
+      required: true,
+    },
+    link: {
+      type: String,
+    },
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true }
 );
+
+// Index for fast fetch of user notifications
+notificationSchema.index({ userId: 1, createdAt: -1 });
 
 export default mongoose.model("Notification", notificationSchema);

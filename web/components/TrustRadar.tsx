@@ -38,7 +38,7 @@ export function TrustRadar({ scores }: TrustRadarProps) {
             <div className={`absolute inset-0 blur-3xl opacity-20 transition-all duration-700 ${isElite ? "bg-amber-400 group-hover:opacity-40" : "bg-indigo-400 opacity-10"
                 }`} />
 
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
                     <PolarGrid stroke="#e2e8f0" strokeOpacity={0.5} />
                     <PolarAngleAxis

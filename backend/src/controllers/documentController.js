@@ -1,4 +1,4 @@
-import StartupProfile from "../models/StartupProfile.js";
+import StartupProfile from "../models/Startup.js";
 import { uploadToS3, getSignedUrl } from "../utils/s3.js";
 
 export const uploadPitchDeck = async (req, res) => {

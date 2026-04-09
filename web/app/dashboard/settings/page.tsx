@@ -19,7 +19,8 @@ import {
     LockIcon,
     ArrowUpRight,
     Globe2,
-    Clock
+    Clock,
+    Zap
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -28,11 +29,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api";
 
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuthStore } from "@/lib/store";
+
 export default function SettingsPage() {
-    const [user, setUser] = useState<any>(null);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const { user: globalUser, updateUser } = useAuthStore();
+    const [user, setUser] = useState<any>(globalUser || {});
     const [isLoading, setIsLoading] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
-    const [activeTab, setActiveTab] = useState("Profile");
+    
+    // Use URL search param for tab, default to Profile
+    const activeTab = searchParams.get("tab") || "Profile";
+    const setActiveTab = (tab: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", tab);
+        router.push(`?${params.toString()}`);
+    };
 
     // Verification State
     const [verifyData, setVerifyData] = useState({
@@ -51,15 +65,15 @@ export default function SettingsPage() {
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
+        if (globalUser) {
+            setUser((prev: any) => ({ ...prev, ...globalUser }));
         }
-    }, []);
+    }, [globalUser]);
 
     const handleSave = () => {
         setIsLoading(true);
         setTimeout(() => {
+            updateUser(user);
             setIsLoading(false);
             setIsSaved(true);
             setTimeout(() => setIsSaved(false), 3000);
@@ -91,10 +105,10 @@ export default function SettingsPage() {
         if (!file) return;
         setIsUploading(true);
         try {
-            const dummyUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+            const uploadedUrl = "https://example.com/pitch-deck.pdf";
             const response = await apiFetch("/api/users/pitch-deck", {
                 method: "PUT",
-                body: JSON.stringify({ pitchDeckUrl: dummyUrl }),
+                body: JSON.stringify({ pitchDeckUrl: uploadedUrl }),
             });
             const data = await response.json();
             if (data.success) {
@@ -116,6 +130,7 @@ export default function SettingsPage() {
 
     const sidebarItems = [
         { label: "Profile", icon: User },
+        { label: "Public Profile", icon: Globe },
         { label: "Verification", icon: ShieldCheck },
         ...(isStartup ? [{ label: "Pitch Deck", icon: FileText }] : []),
         { label: "Security", icon: Shield },
@@ -133,20 +148,58 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 {/* Sidebar Navigation */}
-                <div className="space-y-1">
-                    {sidebarItems.map((item) => (
-                        <button
-                            key={item.label}
-                            onClick={() => setActiveTab(item.label)}
-                            className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === item.label
-                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
-                                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                                }`}
-                        >
-                            <item.icon className={`h-4 w-4 ${activeTab === item.label ? "text-white" : "text-slate-400"}`} />
-                            {item.label}
-                        </button>
-                    ))}
+                <div className="space-y-6">
+                    <div className="space-y-4">
+                        <div className="px-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-[2px] text-slate-400 italic">My Account</h3>
+                        </div>
+                        <div className="space-y-1">
+                            {[
+                                { label: "Profile", icon: User },
+                                { label: "Public Profile", icon: Globe },
+                                { label: "Verification", icon: ShieldCheck },
+                                ...(isStartup ? [{ label: "Pitch Deck", icon: FileText }] : []),
+                            ].map((item) => (
+                                <button
+                                    key={item.label}
+                                    onClick={() => setActiveTab(item.label)}
+                                    className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === item.label
+                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                        }`}
+                                >
+                                    <item.icon className={`h-4 w-4 ${activeTab === item.label ? "text-white" : "text-slate-400"}`} />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="px-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-[2px] text-slate-400 italic">Preference & Privacy</h3>
+                        </div>
+                        <div className="space-y-1">
+                            {[
+                                { label: "Security", icon: Shield },
+                                { label: "Notifications", icon: Bell },
+                                { label: "Privacy", icon: Lock },
+                                { label: "Billing", icon: CreditCard },
+                            ].map((item) => (
+                                <button
+                                    key={item.label}
+                                    onClick={() => setActiveTab(item.label)}
+                                    className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === item.label
+                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                        }`}
+                                >
+                                    <item.icon className={`h-4 w-4 ${activeTab === item.label ? "text-white" : "text-slate-400"}`} />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div className="pt-4 mt-4 border-t border-slate-100">
                         <button className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-all">
                             <LogOut className="h-4 w-4" />
@@ -199,19 +252,19 @@ export default function SettingsPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <div className="space-y-2">
                                             <Label htmlFor="name">Full Name</Label>
-                                            <Input id="name" defaultValue={user.name} className="h-12 border-slate-200 focus:ring-indigo-500" />
+                                            <Input id="name" value={user.name || ''} onChange={(e) => setUser({ ...user, name: e.target.value })} className="h-12 border-slate-200 focus:ring-indigo-500" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="email">Email Address</Label>
-                                            <Input id="email" defaultValue={user.email} disabled className="h-12 bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed" />
+                                            <Input id="email" value={user.email || ''} disabled className="h-12 bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="phone">Phone Number</Label>
-                                            <Input id="phone" defaultValue={user.phone} className="h-12 border-slate-200 focus:ring-indigo-500" />
+                                            <Input id="phone" value={user.phone || ''} onChange={(e) => setUser({ ...user, phone: e.target.value })} className="h-12 border-slate-200 focus:ring-indigo-500" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="location">Primary Location</Label>
-                                            <Input id="location" placeholder="e.g. Mumbai, India" className="h-12 border-slate-200 focus:ring-indigo-500" />
+                                            <Input id="location" value={user.location || ''} onChange={(e) => setUser({ ...user, location: e.target.value })} placeholder="e.g. Mumbai, India" className="h-12 border-slate-200 focus:ring-indigo-500" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -512,7 +565,88 @@ export default function SettingsPage() {
                         </Card>
                     )}
 
-                    {(activeTab !== "Profile" && activeTab !== "Verification" && activeTab !== "Pitch Deck" && activeTab !== "Security") && (
+                    {activeTab === "Public Profile" && (
+                        <Card className="border-none shadow-sm overflow-hidden">
+                            <CardHeader className="border-b border-slate-50 bg-slate-50/30">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-lg">Public Profile</CardTitle>
+                                        <CardDescription>Manage how others see your profile on the platform.</CardDescription>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-8 space-y-8">
+                                <div className="flex items-center justify-between p-6 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all hover:border-indigo-100">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-12 w-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                                            <Globe className="h-6 w-6" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-900">Public Profile Visibility</p>
+                                            <p className="text-xs text-slate-500 italic font-medium">Allow other users to find and view your profile.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Private</span>
+                                        <button 
+                                            onClick={() => {
+                                                const newValue = !user.isPublic;
+                                                setUser({ ...user, isPublic: newValue });
+                                                updateUser({ isPublic: newValue }); // Instant auto-update
+                                            }}
+                                            className={`w-12 h-6 rounded-full transition-all relative ${user.isPublic ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                                        >
+                                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${user.isPublic ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        </button>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Public</span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Profile Preview</Label>
+                                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter border-indigo-100 text-indigo-600 italic">Live Preview</Badge>
+                                    </div>
+                                    
+                                    <div className="p-12 rounded-[40px] bg-slate-50/50 border border-slate-100 flex items-center justify-center relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(79,70,229,0.03)_0%,_transparent_50%)]" />
+                                        
+                                        {/* The Card from Screenshot */}
+                                        <div className="bg-white p-6 rounded-3xl shadow-2xl shadow-slate-200/60 border border-white flex items-center gap-5 min-w-[340px] relative z-10 transition-transform group-hover:scale-105 duration-500">
+                                            <div className="h-20 w-20 rounded-[24px] bg-[#0F172A] flex items-center justify-center text-white text-2xl font-black italic shadow-xl shadow-slate-900/20">
+                                                {user.name?.split(' ').map((n: string) => n[0]).join('').toLowerCase() || 'hk'}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="font-black text-[#0F172A] text-xl uppercase italic tracking-tighter mb-1 leading-none">{user.name}</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-[2px] italic">{user.role}</span>
+                                                </div>
+                                            </div>
+                                            <div className="h-10 w-10 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 shadow-inner">
+                                                <Zap className="h-5 w-5 fill-amber-500" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex gap-4">
+                                        <AlertCircle className="h-5 w-5 text-indigo-600 shrink-0" />
+                                        <p className="text-xs text-indigo-700/80 leading-relaxed font-medium">
+                                            When enabled, your profile will be indexed and searchable by potential verified partners. You can revert this at any time.
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                            <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-3">
+                                <Button variant="ghost">Reset</Button>
+                                <Button onClick={handleSave} disabled={isLoading} className="bg-indigo-600 hover:bg-indigo-700 min-w-[140px] shadow-lg shadow-indigo-100">
+                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isSaved ? "Saved!" : "Update Public Profile")}
+                                </Button>
+                            </div>
+                        </Card>
+                    )}
+
+                    {(activeTab !== "Profile" && activeTab !== "Public Profile" && activeTab !== "Verification" && activeTab !== "Pitch Deck" && activeTab !== "Security") && (
                         <Card className="border-none shadow-sm h-[400px] flex items-center justify-center text-center p-8">
                             <div className="space-y-4">
                                 <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200">

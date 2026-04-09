@@ -97,7 +97,7 @@ export const TinderCard: React.FC<TinderCardProps> = ({ profile, onSwipe, onView
                         <div className="flex items-center gap-4 text-slate-500 text-sm font-medium">
                             <span className="flex items-center gap-1.5">
                                 <Target className="h-4 w-4 text-indigo-500" />
-                                {profile.fundingStage || (profile.minInvestment ? `$${(profile.minInvestment / 1000).toFixed(0)}k+` : "Seed")}
+                                {profile.fundingStage || (profile.minInvestment ? `₹${(profile.minInvestment / 100000).toFixed(0)}L+` : "Seed")}
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <MapPin className="h-4 w-4 text-indigo-500" />

@@ -28,7 +28,7 @@ export default function MeetingRoom() {
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
-    // Mock connecting to WebRTC
+    // Connect to WebRTC
     const startMeeting = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({

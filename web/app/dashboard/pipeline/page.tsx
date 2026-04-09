@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
     Plus,
     MoreVertical,
-    DollarSign,
+    IndianRupee,
     Target,
     Zap,
     ChevronRight,
@@ -33,12 +33,26 @@ const STAGES = [
 
 export default function PipelinePage() {
     const [deals, setDeals] = useState<any[]>([]);
+    const [profile, setProfile] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         fetchDeals();
+        fetchProfile();
     }, []);
+
+    const fetchProfile = async () => {
+        try {
+            const response = await apiFetch("/api/users/profile");
+            const data = await response.json();
+            if (data.success) {
+                setProfile(data.profile);
+            }
+        } catch (error) {
+            console.error("Error fetching profile:", error);
+        }
+    };
 
     const fetchDeals = async () => {
         try {
@@ -96,7 +110,9 @@ export default function PipelinePage() {
                 <div className="flex items-center gap-3">
                     <div className="text-right mr-4 hidden md:block">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pipeline Goal</p>
-                        <p className="text-xl font-bold text-indigo-600">$5.0M</p>
+                        <p className="text-xl font-bold text-indigo-600">
+                            ₹{profile?.fundingRequired ? (profile.fundingRequired / 10000000).toFixed(1) : "0.0"}Cr
+                        </p>
                     </div>
                     <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 gap-2">
                         <Plus className="h-4 w-4" />
@@ -121,7 +137,7 @@ export default function PipelinePage() {
                                     </Badge>
                                 </div>
                                 <span className="text-xs font-bold text-slate-400">
-                                    ${(totalAmount / 1000000).toFixed(1)}M
+                                    ₹{(totalAmount / 10000000).toFixed(1)}Cr
                                 </span>
                             </div>
 
@@ -146,8 +162,8 @@ export default function PipelinePage() {
 
                                                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50">
                                                     <div className="flex items-center gap-1.5">
-                                                        <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
-                                                        <span className="text-sm font-bold text-slate-900">${(deal.amount / 1000).toFixed(0)}k</span>
+                                                        <IndianRupee className="h-3.5 w-3.5 text-emerald-600" />
+                                                        <span className="text-sm font-bold text-slate-900">₹{(deal.amount / 100000).toFixed(0)}L</span>
                                                     </div>
                                                     {stage.id !== "CLOSED" && (
                                                         <Button

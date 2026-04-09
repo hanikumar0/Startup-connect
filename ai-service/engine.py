@@ -1,8 +1,12 @@
 from sentence_transformers import SentenceTransformer, util
 import numpy as np
 import os
-from openai import OpenAI
-# Environment variables are managed by main.py
+from dotenv import load_dotenv
+
+# Try to load from current dir, then from root
+load_dotenv()
+if not os.getenv("GEMINI_API_KEY"):
+    load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 
 class MatchingEngine:
@@ -10,14 +14,33 @@ class MatchingEngine:
         # This model is small, fast, and great for semantic similarity
         print(f"Loading AI model: {model_name}...")
         self.model = SentenceTransformer(model_name)
+        print("SentenceTransformer loaded.")
         
-        # Initialize OpenAI client if key is available
+        # Initialize Gemini client
+        self.gemini_available = False
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        if gemini_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_key)
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+                # Test the model immediately (deferred)
+                # test_resp = self.gemini_model.generate_content("Ping")
+                self.gemini_available = True
+                print(f"Gemini AI structure initialized.")
+            except Exception as e:
+                import traceback
+                print(f"CRITICAL: Gemini initialization failed: {e}")
+                traceback.print_exc()
+                self.gemini_available = False
+        
+        # Fallback to OpenAI if Gemini isn't available and OpenAI key exists
         self.openai_client = None
-        self.openai_circuit_broken_until = 0
         api_key = os.getenv("OPENAI_API_KEY")
-        if api_key and api_key != "your_openai_api_key":
+        if not self.gemini_available and api_key and api_key != "your_openai_api_key":
+            from openai import OpenAI
             self.openai_client = OpenAI(api_key=api_key)
-            print("OpenAI client initialized for LLM reasoning.")
+            print("OpenAI client initialized as fallback.")
         
         print("Model loaded successfully.")
 
@@ -67,8 +90,17 @@ class MatchingEngine:
         return results[:top_n]
 
     def _generate_reasoning(self, source, candidate, score):
-        # Use LLM for high-quality reasoning if available and score is high
-        if self._check_openai_status() and score > 0.4:
+        # Use Gemini for high-quality reasoning if available and score is high
+        if self.gemini_available and score > 0.4:
+            try:
+                prompt = f"As a professional venture capital analyst, briefly explain in one sentence why this startup and investor are a good match based on their profiles.\n\nStartup: {source.text_content}\nInvestor: {candidate.text_content}"
+                response = self.gemini_model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as e:
+                print(f"Gemini reasoning error: {e}")
+        
+        # Fallback to OpenAI
+        if self.openai_client and score > 0.4:
             try:
                 response = self.openai_client.chat.completions.create(
                     model="gpt-3.5-turbo",
@@ -80,7 +112,7 @@ class MatchingEngine:
                 )
                 return response.choices[0].message.content.strip()
             except Exception as e:
-                self._handle_openai_error(e)
+                print(f"OpenAI reasoning error: {e}")
         
         # Fallback to heuristic
         source_ind = source.metadata.get('industry', '')
@@ -138,7 +170,35 @@ class MatchingEngine:
         }
 
     def analyze_document(self, doc_name: str, doc_content: str):
-        if self._check_openai_status():
+        if self.gemini_available:
+            try:
+                prompt = f"""
+                Analyze this startup document: {doc_name}
+                Content Summary: {doc_content[:3000]}
+                
+                Provide:
+                1. A one-sentence professional summary.
+                2. A risk score from 0-100 (0 being low risk).
+                3. Top 3 key clauses or highlights extracted from the text.
+                
+                Format as valid JSON:
+                {{
+                    "summary": "...",
+                    "risk_score": 25,
+                    "clauses": ["clause 1", "clause 2", "clause 3"]
+                }}
+                """
+                response = self.gemini_model.generate_content(prompt)
+                import json
+                # Clean potential markdown from response
+                text = response.text.strip()
+                if text.startswith("```json"):
+                    text = text[7:-3].strip()
+                return json.loads(text)
+            except Exception as e:
+                print(f"Gemini document analysis error: {e}")
+
+        if self.openai_client:
             try:
                 prompt = f"""
                 Analyze this startup document: {doc_name}
@@ -167,11 +227,48 @@ class MatchingEngine:
                 import json
                 return json.loads(response.choices[0].message.content)
             except Exception as e:
-                self._handle_openai_error(e)
+                print(f"OpenAI document analysis error: {e}")
         
-        # Heuristic Fallback
         return {
             "summary": f"Professional review of {doc_name} for investment readiness.",
             "risk_score": 15,
             "clauses": ["Standard investment terms", "Confidentiality agreement", "Market alignment"]
         }
+
+    def improve_text(self, text, context_type):
+        context = "a startup founder's vision" if context_type == "startup_vision" else "an investor's investment thesis"
+        prompt = f"""
+        You are a professional copywriter for the venture capital industry.
+        Improve the following text for {context}. 
+        Make it professional, compelling, and concise (max 2-3 sentences).
+        
+        Original text: {text}
+        
+        Improved text:
+        """
+        
+        # 1. Try Gemini
+        if self.gemini_available:
+            try:
+                response = self.gemini_model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as e:
+                print(f"Gemini improvement error: {e}")
+        
+        # 2. Try OpenAI Fallback
+        if self.openai_client:
+            try:
+                response = self.openai_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a professional venture capital industry copywriter."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=150
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as e:
+                print(f"OpenAI improvement error: {e}")
+        
+        # 3. Last resort: Return original
+        return text
