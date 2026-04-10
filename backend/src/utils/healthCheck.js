@@ -143,6 +143,22 @@ const runServiceHealthCheck = async () => {
                 return { name: "Verification API", status: "fail", error: "Down" };
             }
         })(),
+
+        // 11. Logo.dev API
+        (async () => {
+            try {
+                const token = process.env.LOGODEV_PUBLISHABLE_KEY;
+                if (!token) throw new Error("Missing Publishable Key");
+                // Check connectivity to Logo.dev
+                await axios.get("https://img.logo.dev/google.com", { 
+                    timeout: 4000,
+                    params: { token }
+                 });
+                return { name: "Logo.dev API", status: "ok" };
+            } catch (e) {
+                return { name: "Logo.dev API", status: "fail", error: e.response?.status === 401 ? "Invalid Key" : "Unreachable" };
+            }
+        })(),
     ];
 
     const results = await Promise.all(checks);

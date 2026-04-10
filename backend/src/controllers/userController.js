@@ -154,14 +154,26 @@ export const getDashboardStats = async (req, res) => {
 
 export const getDiscoverableProfiles = async (req, res) => {
     try {
-        const { role } = req.query;
+        const { role, page = 1, limit = 8 } = req.query;
         const currentUserId = req.user.id;
+        const skip = (Number(page) - 1) * Number(limit);
 
+        let query = { userId: { $ne: currentUserId } };
         let profiles = [];
+        let total = 0;
+
         if (role === "STARTUP") {
-            profiles = await StartupProfile.find({ userId: { $ne: currentUserId } }).populate('userId', 'name email verificationStatus gstNumber udyamNumber dpiitNumber');
+            total = await StartupProfile.countDocuments(query);
+            profiles = await StartupProfile.find(query)
+                .populate('userId', 'name email verificationStatus gstNumber udyamNumber dpiitNumber')
+                .skip(skip)
+                .limit(Number(limit));
         } else if (role === "INVESTOR") {
-            profiles = await InvestorProfile.find({ userId: { $ne: currentUserId } }).populate('userId', 'name email verificationStatus');
+            total = await InvestorProfile.countDocuments(query);
+            profiles = await InvestorProfile.find(query)
+                .populate('userId', 'name email verificationStatus')
+                .skip(skip)
+                .limit(Number(limit));
         }
 
         // Add connection status to each profile
@@ -194,9 +206,15 @@ export const getDiscoverableProfiles = async (req, res) => {
             };
         });
 
-        res.status(200).json({ success: true, profiles: profilesWithStatus });
+        res.status(200).json({ 
+            success: true, 
+            profiles: profilesWithStatus,
+            total,
+            page: Number(page),
+            pages: Math.ceil(total / Number(limit))
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 

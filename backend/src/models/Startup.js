@@ -32,6 +32,9 @@ const startupSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
+        founderName: {
+            type: String,
+        },
         logo: {
             type: String,
         },
@@ -51,7 +54,7 @@ const startupSchema = new mongoose.Schema(
         },
         stage: {
             type: String,
-            enum: ["idea", "MVP", "revenue", "growth"],
+            enum: ["idea", "MVP", "seed", "series A", "revenue", "growth"],
             required: true,
         },
         fundingRequired: {

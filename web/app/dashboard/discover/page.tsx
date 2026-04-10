@@ -37,6 +37,7 @@ import { TrustRadar } from "@/components/TrustRadar";
 import { MatchAnalysisSidebar } from "@/components/discover/MatchAnalysisSidebar";
 import { HistoryAuditModal } from "@/components/discover/HistoryAuditModal";
 import { apiFetch } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 function DiscoverContent() {
     const searchParams = useSearchParams();
@@ -53,6 +54,8 @@ function DiscoverContent() {
     const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
     const [isAuditOpen, setIsAuditOpen] = useState(false);
     const [auditData, setAuditData] = useState<any>({ name: "", type: "STARTUP", founder: "" });
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
@@ -60,10 +63,10 @@ function DiscoverContent() {
             const parsedUser = JSON.parse(storedUser);
             setUser(parsedUser);
             const roleToFind = parsedUser.role === "STARTUP" ? "INVESTOR" : "STARTUP";
-            fetchProfiles(roleToFind);
+            fetchProfiles(roleToFind, 1);
             fetchAiMatches(parsedUser.role.toLowerCase());
         }
-    }, []);
+    }, [searchTerm]);
 
     const fetchAiMatches = async (role: string) => {
         try {
@@ -79,12 +82,15 @@ function DiscoverContent() {
         }
     };
 
-    const fetchProfiles = async (roleToFind: string) => {
+    const fetchProfiles = async (roleToFind: string, p = 1) => {
+        setIsLoading(true);
         try {
-            const response = await apiFetch(`/api/users/discover?role=${roleToFind}`);
+            const response = await apiFetch(`/api/users/discover?role=${roleToFind}&page=${p}&limit=8&q=${searchTerm}`);
             const data = await response.json();
             if (data.success) {
                 setProfiles(data.profiles);
+                setTotalPages(data.pages || 1);
+                setCurrentPage(data.page || 1);
             }
         } catch (error) {
             console.error("Error fetching discover profiles:", error);
@@ -566,6 +572,57 @@ function DiscoverContent() {
                             </div>
                         )}
                     </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-center gap-4 py-12">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => fetchProfiles(user?.role === "STARTUP" ? "INVESTOR" : "STARTUP", currentPage - 1)}
+                                disabled={currentPage === 1 || isLoading}
+                                className="rounded-xl font-bold bg-white text-slate-600 border-slate-200"
+                            >
+                                Previous
+                            </Button>
+                            <div className="flex items-center gap-2">
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    let pageNum;
+                                    if (totalPages <= 5) pageNum = i + 1;
+                                    else if (currentPage <= 3) pageNum = i + 1;
+                                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                    else pageNum = currentPage - 2 + i;
+
+                                    if (pageNum <= 0 || pageNum > totalPages) return null;
+
+                                    return (
+                                        <Button
+                                            key={pageNum}
+                                            variant={currentPage === pageNum ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => fetchProfiles(user?.role === "STARTUP" ? "INVESTOR" : "STARTUP", pageNum)}
+                                            className={cn(
+                                                "w-10 h-10 rounded-xl font-bold transition-all",
+                                                currentPage === pageNum ? "bg-indigo-600 shadow-lg shadow-indigo-500/20 text-white border-none" : "bg-white text-slate-500"
+                                            )}
+                                            disabled={isLoading}
+                                        >
+                                            {pageNum}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => fetchProfiles(user?.role === "STARTUP" ? "INVESTOR" : "STARTUP", currentPage + 1)}
+                                disabled={currentPage === totalPages || isLoading}
+                                className="rounded-xl font-bold bg-white text-slate-600 border-slate-200"
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    )}
                 </>
             )}
 

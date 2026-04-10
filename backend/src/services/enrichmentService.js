@@ -9,18 +9,18 @@ dotenv.config();
  */
 class EnrichmentService {
     constructor() {
-        this.clearbitUrl = process.env.CLEARBIT_URL || "https://logo.clearbit.com";
+        this.logodevUrl = process.env.LOGODEV_BASE_URL || "https://img.logo.dev";
         this.microlinkApi = "https://api.microlink.io";
     }
 
     /**
-     * Get logo from Clearbit
+     * Get logo from Logo.dev
      */
     async getLogo(website) {
         if (!website) return null;
         try {
             const domain = new URL(website).hostname.replace('www.', '');
-            return `${this.clearbitUrl}/${domain}`;
+            return `${this.logodevUrl}/${domain}?token=${process.env.LOGODEV_PUBLISHABLE_KEY}`;
         } catch (e) {
             return null;
         }
@@ -56,14 +56,14 @@ class EnrichmentService {
         if (!website) return record;
 
         const metadata = await this.enrichMetadata(website);
-        const clearbitLogo = await this.getLogo(website);
+        const logodevLogo = await this.getLogo(website);
 
         if (metadata) {
             if (!record.description) record.description = metadata.description;
-            if (!record.logo) record.logo = metadata.logo || clearbitLogo;
+            if (!record.logo) record.logo = metadata.logo || logodevLogo;
             if (type === 'startup' && !record.tagline) record.tagline = metadata.title;
         } else if (!record.logo) {
-            record.logo = clearbitLogo;
+            record.logo = logodevLogo;
         }
 
         return record;

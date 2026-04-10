@@ -9,7 +9,9 @@ import {
   getCampaigns,
   getCampaignById,
   generateLinkedInMessage,
-  getOutreachAnalytics
+  getOutreachAnalytics,
+  sendLeadInquiry,
+  getUserOutreachStats
 } from "../controllers/outreachController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
@@ -20,8 +22,14 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Admin-only outreach endpoints
+// All outreach needs authentication
 router.use(protect);
+
+// --- User Outreach Endpoints (Discovery) ---
+router.post("/send-inquiry", sendLeadInquiry);
+router.get("/stats", getUserOutreachStats);
+
+// --- Admin-only outreach endpoints ---
 router.use(authorizeRoles("admin"));
 
 // Leads
@@ -36,7 +44,7 @@ router.post("/campaign/create", createCampaign);
 router.post("/campaign/send", sendCampaign);
 
 // AI & Analytics
-router.post("/outreach/linkedin-message", generateLinkedInMessage);
-router.get("/outreach/analytics", getOutreachAnalytics);
+router.post("/linkedin-message", generateLinkedInMessage);
+router.get("/analytics", getOutreachAnalytics);
 
 export default router;

@@ -7,6 +7,8 @@ import hpp from "hpp";
 import xss from "xss-clean";
 import mongoSanitize from "express-mongo-sanitize";
 import logger from "./config/logger.js";
+import cron from "node-cron";
+import { runMasterIngestion } from "./services/externalIngestionService.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import startupRoutes from "./routes/startupRoutes.js";
@@ -14,6 +16,7 @@ import investorRoutes from "./routes/investorRoutes.js";
 import discoverRoutes from "./routes/discoverRoutes.js";
 import saveRoutes from "./routes/saveRoutes.js";
 import matchRoutes from "./routes/matchRoutes.js";
+import connectionRoutes from "./routes/connectionRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import meetingRoutes from "./routes/meetingRoutes.js";
 import claimRoutes from "./routes/claimRoutes.js";
@@ -32,6 +35,7 @@ import outreachRoutes from "./routes/outreachRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import importRoutes from "./routes/importRoutes.js";
+import externalRoutes from "./routes/externalRoutes.js";
 import passport from "./config/passport.js";
 import mongoose from "mongoose";
 import AppError from "./utils/AppError.js";
@@ -122,6 +126,7 @@ app.use("/api/investor", investorRoutes);
 app.use("/api/discover", discoverRoutes);
 app.use("/api/save", saveRoutes);
 app.use("/api/match", matchRoutes);
+app.use("/api/connections", connectionRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/claim", claimRoutes);
@@ -139,6 +144,7 @@ app.use("/api/outreach", outreachRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/import", importRoutes);
+app.use("/api/external", externalRoutes);
 
 // Error Handling
 app.all("*", (req, res, next) => {
@@ -173,5 +179,14 @@ app.use((err, req, res, next) => {
         }
     }
 });
+
+// --- Strategic Data Ingestion Pipelines ---
+// CRON_IMPORT = 0 */12 * * * (Every 12 hours)
+cron.schedule("0 */12 * * *", () => {
+    runMasterIngestion();
+});
+
+// Immediate Background Fetch on Startup for Initial Population
+runMasterIngestion();
 
 export default app;

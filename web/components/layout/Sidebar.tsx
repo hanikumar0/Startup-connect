@@ -66,8 +66,8 @@ export function Sidebar() {
             let finalHref = item.href;
             if (item.href === "/dashboard" && user?.role) {
                 finalHref = `/${user.role}/dashboard`;
-            } else if (item.href === "/discover" && user?.role) {
-                finalHref = user.role === "startup" ? "/discover/investors" : "/discover/startups";
+            } else if (item.href === "/discover") {
+                finalHref = "/discover/dashboard";
             }
 
             return (

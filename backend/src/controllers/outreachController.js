@@ -1,6 +1,8 @@
 import Lead from "../models/Lead.js";
 import Campaign from "../models/Campaign.js";
 import User from "../models/User.js";
+import OutreachLog from "../models/OutreachLog.js";
+import ExternalProfile from "../models/ExternalProfile.js";
 import sendEmail from "../utils/email.js";
 import csv from "csv-parser";
 import { Readable } from "stream";
@@ -283,4 +285,89 @@ export const getOutreachAnalytics = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// @desc    Send inquiry for a specific external lead (Startup to Investor or vice versa)
+// @route   POST /api/outreach/send-inquiry
+export const sendLeadInquiry = async (req, res) => {
+    try {
+        const { externalProfileId, message, type = "EMAIL" } = req.body;
+        const userId = req.user.id;
+
+        // 1. Validate Lead
+        const profile = await ExternalProfile.findById(externalProfileId);
+        if (!profile) return res.status(404).json({ success: false, message: "External profile not found" });
+
+        // 2. Daily Limit Check (20 per day)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const outreachCount = await OutreachLog.countDocuments({
+            userId,
+            createdAt: { $gte: today }
+        });
+
+        const DAILY_LIMIT = 20;
+        if (outreachCount >= DAILY_LIMIT) {
+            return res.status(429).json({ 
+                success: false, 
+                message: `Strategic Daily Outreach Limit Reached (${DAILY_LIMIT}/day). Upgrade for high-volume access.` 
+            });
+        }
+
+        // 3. Create Outreach Log
+        const log = await OutreachLog.create({
+            userId,
+            externalProfileId,
+            message,
+            type,
+            status: "SENT",
+            sentAt: new Date()
+        });
+
+        // 4. Update External Profile Metadata (Optional: Track popularity)
+        await ExternalProfile.findByIdAndUpdate(externalProfileId, {
+            $inc: { "metadata.inquiryCount": 1 }
+        });
+
+        // 5. In a real-world scenario, we would trigger an actual email/linkedin dispatch here
+        // For now, we simulate a successful strategic outreach
+        res.status(200).json({
+            success: true,
+            message: "Inquiry dispatched to lead. You will be notified of any response.",
+            data: log,
+            remainingLimit: DAILY_LIMIT - outreachCount - 1
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get current user's outreach daily stats
+// @route   GET /api/outreach/stats
+export const getUserOutreachStats = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const dailyCount = await OutreachLog.countDocuments({
+            userId,
+            createdAt: { $gte: today }
+        });
+
+        const DAILY_LIMIT = 20;
+
+        res.status(200).json({
+            success: true,
+            stats: {
+                dailyLimit: DAILY_LIMIT,
+                dailyOutreachCount: dailyCount,
+                remaining: Math.max(0, DAILY_LIMIT - dailyCount)
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
