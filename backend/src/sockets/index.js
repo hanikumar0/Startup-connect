@@ -16,15 +16,24 @@ const setupSockets = (server) => {
             methods: ["GET", "POST", "OPTIONS"],
             credentials: true
         },
+        transports: ["websocket", "polling"], // Allow polling as fallback if websocket fails
         pingTimeout: 60000,
-        pingInterval: 25000
+        pingInterval: 25000,
+        allowEIO3: true // Support older clients if any
     });
+
+    console.log("🏁 [Socket.io] Server initialized with WebSocket & Polling support");
 
     // Socket Authentication
     io.use((socket, next) => {
         const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+        console.log(`🔑 [Socket.io] Auth attempt for socket ${socket.id} | Token present: ${!!token}`);
+        
         if (!token) {
-            if (!isProduction) return next();
+            if (!isProduction) {
+                console.log("⚠️ [Socket.io] No token, but allowing in development mode");
+                return next();
+            }
             return next(new Error("Authentication required"));
         }
         try {
@@ -32,6 +41,7 @@ const setupSockets = (server) => {
             socket.userId = decoded.id;
             next();
         } catch (err) {
+            console.error(`❌ [Socket.io] JWT Verification failed: ${err.message}`);
             if (!isProduction) return next();
             next(new Error("Invalid token"));
         }

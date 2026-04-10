@@ -9,10 +9,10 @@ export const initSocket = (token: string) => {
 
     socket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000", {
         auth: { token },
-        transports: ["websocket"], // Force WebSocket to prevent polling/transport close errors
+        transports: ["websocket", "polling"], // Re-enable polling fallback for compatibility
         reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
         timeout: 20000,
     });
 
