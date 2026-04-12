@@ -1,39 +1,43 @@
+@import "tailwindcss";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
   
-  --color-background: #F8F9FB;
-  --color-foreground: #111827;
+  --color-background: #F8FAFC;
+  --color-foreground: #0F172A;
   
   --color-card: #FFFFFF;
-  --color-card-foreground: #111827;
+  --color-card-foreground: #0F172A;
   
   --color-popover: #FFFFFF;
-  --color-popover-foreground: #111827;
+  --color-popover-foreground: #0F172A;
   
-  --color-primary: #6C5CE7;
+  --color-primary: #6366F1;
   --color-primary-foreground: #FFFFFF;
   
-  --color-secondary: #F3F4F6;
-  --color-secondary-foreground: #6B7280;
+  --color-secondary: #F1F5F9;
+  --color-secondary-foreground: #475569;
   
-  --color-muted: #F3F4F6;
-  --color-muted-foreground: #6B7280;
+  --color-muted: #F1F5F9;
+  --color-muted-foreground: #64748B;
   
-  --color-accent: #6C5CE7;
+  --color-accent: #6366F1;
   --color-accent-foreground: #FFFFFF;
   
   --color-destructive: #EF4444;
   --color-destructive-foreground: #FFFFFF;
   
-  --color-border: #E5E7EB;
-  --color-input: #E5E7EB;
-  --color-ring: #6C5CE7;
+  --color-border: #E2E8F0;
+  --color-input: #E2E8F0;
+  --color-ring: #6366F1;
 
-  --radius-xl: 16px;
-  --radius-lg: 12px;
-  --radius-md: 8px;
+  --radius-3xl: 20px;
+  --radius-2xl: 16px;
+  --radius-xl: 14px;
+  --radius-lg: 10px;
+  --radius-md: 6px;
   --radius-sm: 4px;
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
@@ -52,24 +56,27 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring;
+    @apply border-border outline-ring border-solid;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/10 selection:text-primary;
+    @apply bg-background text-foreground font-sans antialiased text-[14px];
   }
   h1 {
-    @apply text-3xl font-semibold tracking-tight text-foreground;
+    @apply text-xl font-bold tracking-tight text-slate-900;
   }
   h2 {
-    @apply text-xl font-medium tracking-tight text-foreground;
+    @apply text-lg font-bold tracking-tight text-slate-800;
+  }
+  h3 {
+    @apply text-[14px] font-bold text-slate-800;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white border border-border shadow-sm;
+    @apply bg-white border border-slate-100 shadow-sm;
   }
   .hover-lift {
-     @apply transition-transform duration-200 hover:-translate-y-0.5;
+     @apply transition-all duration-200 hover:-translate-y-0.5;
   }
 }

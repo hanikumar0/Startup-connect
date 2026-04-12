@@ -96,9 +96,9 @@ export const requestVDRAccess = async (req, res) => {
 
         const requester = await User.findById(userId);
         await Notification.create({
-            recipient: doc.owner,
+            userId: doc.owner,
             sender: userId,
-            type: "SYSTEM",
+            type: "system_alert",
             title: "VDR Access Request",
             message: `${requester.name} requested access to ${doc.name}`,
             link: "/dashboard/settings"
@@ -137,9 +137,9 @@ export const handleAccessRequest = async (req, res) => {
         await doc.save();
 
         await Notification.create({
-            recipient: request.user,
+            userId: request.user,
             sender: userId,
-            type: "SYSTEM",
+            type: "system_alert",
             title: `VDR Access ${status}`,
             message: `Your request for ${doc.name} was ${status.toLowerCase()}.`,
             link: `/dashboard/discover`

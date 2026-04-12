@@ -28,9 +28,9 @@ export const requestClaim = async (req, res) => {
         const admins = await User.find({ role: "admin" });
         for (const admin of admins) {
             await Notification.create({
-                recipient: admin._id,
+                userId: admin._id,
                 sender: userId,
-                type: "CLAIM_REQUEST",
+                type: "claim_request",
                 title: "New Profile Claim Request",
                 message: `${req.user.name} wants to claim ${type === 'startup' ? profile.startupName : profile.investorName}`,
                 link: `/admin/claims`
@@ -67,9 +67,9 @@ export const approveClaim = async (req, res) => {
 
         // Notify user
         await Notification.create({
-            recipient: approvedUserId,
+            userId: approvedUserId,
             sender: req.user.id,
-            type: "CLAIM_APPROVED",
+            type: "claim_approved",
             title: "Profile Claim Approved",
             message: `Your claim for ${profile.startupName || profile.investorName} has been approved!`,
             link: `/${type}/dashboard`

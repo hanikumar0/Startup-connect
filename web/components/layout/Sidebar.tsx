@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
   Search, 
+  Users,
   MessageSquare, 
   Calendar, 
   Bookmark, 
@@ -13,7 +14,6 @@ import {
   ShieldCheck,
   Lock,
   Bell,
-  CreditCard,
   LogOut,
   Zap
 } from "lucide-react";
@@ -21,93 +21,76 @@ import { useAuthStore } from "@/lib/store";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { logout, user } = useAuthStore();
-
-  const isNavItemActive = (href: string) => {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard" || pathname === "/startup/dashboard" || pathname === "/investor/dashboard" || pathname === "/admin/dashboard";
-    }
-    return pathname.startsWith(href);
-  };
 
   const mainNavItems = [
     { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Discover", href: "/discover", icon: Search },
-    { label: "Messages", href: "/messages", icon: MessageSquare },
-    { label: "Meetings", href: "/meetings", icon: Calendar },
-    { label: "Saved", href: "/saved", icon: Bookmark },
+    { label: "Discover", href: "/dashboard/discover", icon: Search },
+    { label: "Connections", href: "/dashboard/network", icon: Users },
+    { label: "Messages", href: "/dashboard/chat", icon: MessageSquare },
+    { label: "Meetings", href: "/dashboard/meetings", icon: Calendar },
+    { label: "Saved", href: "/dashboard/saved", icon: Bookmark },
   ];
 
   const settingsItems = [
-    { label: "Profile", href: "/settings?tab=profile", icon: User },
-    { label: "Verification", href: "/settings?tab=verification", icon: ShieldCheck },
-    { label: "Security", href: "/settings?tab=security", icon: Lock },
-    { label: "Notifications", href: "/settings?tab=notifications", icon: Bell },
-    { label: "Billing", href: "/settings?tab=billing", icon: CreditCard },
+    { label: "Profile", href: "/dashboard/settings/profile", icon: User },
+    { label: "Verification", href: "/dashboard/settings/verification", icon: ShieldCheck },
+    { label: "Security", href: "/dashboard/settings/security", icon: Lock },
+    { label: "Notifications", href: "/dashboard/settings/notifications", icon: Bell },
   ];
 
   return (
-    <div className="flex h-full w-[260px] flex-col bg-white border-r border-border">
+    <div className="flex h-full w-[240px] flex-col bg-white border-r border-slate-100 shrink-0">
       
       {/* Brand logo */}
-      <div className="px-6 py-6 border-b border-border">
-        <Link href="/" className="flex items-center gap-3">
-           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-sm">
-             <Zap size={18} fill="currentColor" />
+      <div className="px-7 py-6">
+        <Link href="/dashboard" className="flex items-center gap-3">
+           <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md">
+             <Zap size={16} fill="currentColor" />
            </div>
-           <span className="text-base font-semibold text-slate-900 tracking-tight">Startup Connect</span>
+           <span className="text-lg font-black text-slate-900 tracking-tight">Startup Connect</span>
         </Link>
       </div>
 
-      <div className="flex-1 px-4 py-6 space-y-8 overflow-y-auto">
-        <div className="space-y-1">
+      <div className="flex-1 px-4 py-2 space-y-6 overflow-y-auto no-scrollbar">
+        <nav className="space-y-1">
           {mainNavItems.map((item) => {
-            const active = isNavItemActive(item.href);
-            let finalHref = item.href;
-            if (item.href === "/dashboard" && user?.role) {
-                finalHref = `/${user.role}/dashboard`;
-            } else if (item.href === "/discover") {
-                finalHref = "/discover/dashboard";
-            }
-
-            return (
-              <Link 
-                key={item.label} 
-                href={finalHref}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  active 
-                    ? "bg-slate-100/80 text-slate-900" 
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                )}
-              >
-                <item.icon className={cn("h-4 w-4", active ? "text-primary" : "text-slate-400")} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-
-        <div className="h-px bg-border my-6" />
-
-        <div className="space-y-1">
-          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Settings</p>
-          {settingsItems.map((item) => {
-            // Using a simple query param check or pathname check for demo purposes
-            // In a real app we might want a stricter check
-            const active = pathname.includes(item.href.split('?')[0]); 
+            const active = pathname === item.href;
             return (
               <Link 
                 key={item.label} 
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  active && pathname.includes('settings') // rudimentary check mostly relying on exact path matching
-                    ? "bg-slate-100/80 text-slate-900" 
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  "flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-bold transition-all",
+                  active 
+                    ? "bg-slate-50 text-indigo-600 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50"
                 )}
               >
-                <item.icon className={cn("h-4 w-4", active && pathname.includes('settings') ? "text-primary" : "text-slate-400")} />
+                <item.icon className={cn("h-4.5 w-4.5", active ? "text-indigo-600 font-black" : "text-slate-400")} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="pt-4 border-t border-slate-50 space-y-1">
+          <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-300 mb-3 opacity-70">Settings</p>
+          {settingsItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link 
+                key={item.label} 
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-bold transition-all",
+                  active 
+                    ? "bg-slate-50 text-indigo-600 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50"
+                )}
+              >
+                <item.icon className={cn("h-4.5 w-4.5", active ? "text-indigo-600 font-black" : "text-slate-400")} />
                 {item.label}
               </Link>
             );
@@ -115,22 +98,26 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="p-4 border-t border-border mt-auto">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border shadow-sm mb-2">
-           <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-medium text-xs">
-              {user?.name?.charAt(0) || "U"}
+      {/* Profile Card at bottom - Replicated from Image */}
+      <div className="p-4 border-t border-slate-50">
+        <div 
+          className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-100 bg-white shadow-sm mb-2 cursor-pointer hover:border-indigo-100 transition-all overflow-hidden group"
+          onClick={() => router.push("/dashboard/settings/profile")}
+        >
+           <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 text-[10px] font-black shrink-0 shadow-inner group-hover:bg-indigo-600 group-hover:text-white transition-all">
+              {user?.avatar ? <img src={user.avatar} className="h-full w-full rounded-full object-cover" /> : (user?.name?.charAt(0) || "R")}
            </div>
-           <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium text-slate-900 truncate leading-none">{user?.name || "User"}</p>
-              <p className="text-xs text-slate-500 truncate mt-1 capitalize">{user?.role || "founder"}</p>
+           <div className="flex-1 min-w-0">
+              <p className="text-[12.5px] font-black text-slate-900 truncate leading-tight">{user?.name || "Rahul Mehta"}</p>
+              <p className="text-[10px] font-bold text-slate-400 truncate opacity-70 capitalize">{user?.role || "Investor"}</p>
            </div>
         </div>
         <button 
           onClick={logout}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+          className="w-full flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
         >
+          <LogOut size={14} className="opacity-50" />
           <span>Log out</span>
-          <LogOut size={14} />
         </button>
       </div>
     </div>

@@ -11,44 +11,32 @@ const meetingSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
-        startupId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Startup",
-            required: true,
-        },
-        investorId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Investor",
-            required: true,
-        },
-        requestedBy: {
+        creatorId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
         },
-        meetingDate: {
-            type: Date,
+        participantId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
             required: true,
         },
-        meetingTime: {
-            type: String,
+        startTime: {
+            type: Date,
             required: true,
         },
         duration: {
             type: Number, // In minutes
             default: 30,
         },
-        timezone: {
-            type: String,
-            default: "UTC",
-        },
         meetingLink: {
             type: String,
+            default: "https://meet.google.com/abc-defg-hij",
         },
         status: {
             type: String,
-            enum: ["pending", "accepted", "rejected", "cancelled", "completed"],
-            default: "pending",
+            enum: ["pending", "scheduled", "accepted", "rejected", "cancelled", "completed"],
+            default: "scheduled",
         },
         conversationId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -59,7 +47,7 @@ const meetingSchema = new mongoose.Schema(
 );
 
 // Index for quick lookups
-meetingSchema.index({ startupId: 1, meetingDate: 1 });
-meetingSchema.index({ investorId: 1, meetingDate: 1 });
+meetingSchema.index({ creatorId: 1, startTime: 1 });
+meetingSchema.index({ participantId: 1, startTime: 1 });
 
 export default mongoose.model("Meeting", meetingSchema);

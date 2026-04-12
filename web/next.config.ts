@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
 
   // Performance
   reactStrictMode: false,
-  poweredByHeader: false, // Don't expose Next.js version
+  poweredByHeader: false // Don't expose Next.js version
 };
 
 export default nextConfig;

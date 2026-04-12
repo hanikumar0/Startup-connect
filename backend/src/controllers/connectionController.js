@@ -1,5 +1,6 @@
 import Connection from "../models/Connection.js";
 import User from "../models/User.js";
+import Conversation from "../models/Conversation.js";
 import { createNotification } from "../services/notificationService.js";
 
 // @desc    Send a connection request
@@ -69,13 +70,25 @@ export const respondToRequest = async (req, res) => {
         await connection.save();
 
         if (status === "ACCEPTED") {
+            // Auto-create conversation
+            const existingConversation = await Conversation.findOne({
+                participants: { $all: [connection.sender, connection.recipient] }
+            });
+
+            if (!existingConversation) {
+                await Conversation.create({
+                    participants: [connection.sender, connection.recipient],
+                    isActive: true
+                });
+            }
+
             // Notify sender
             await createNotification({
                 userId: connection.sender,
                 type: "connection_accepted",
                 title: "Connection Request Accepted",
                 message: `${req.user.name} has accepted your connection request. You can now chat and schedule meetings.`,
-                link: "/messages"
+                link: "/dashboard/chat"
             });
         }
 
@@ -94,7 +107,33 @@ export const getMyConnections = async (req, res) => {
             status: "ACCEPTED"
         }).populate("sender recipient", "name avatar role lastLogin");
 
-        res.status(200).json({ success: true, data: connections });
+        // Enforce ObjectId-based conversations for every connection
+        const enrichedConnections = await Promise.all(connections.map(async (conn) => {
+            const partner = conn.sender._id.toString() === req.user.id.toString() ? conn.recipient : conn.sender;
+            
+            let conversation = await Conversation.findOne({
+                participants: { $all: [conn.sender._id, conn.recipient._id] }
+            });
+
+            // Auto-provision if missing (Self-healing infrastructure)
+            if (!conversation) {
+                conversation = await Conversation.create({
+                    participants: [conn.sender._id, conn.recipient._id]
+                });
+            }
+
+            return {
+                id: partner._id,
+                name: partner.name,
+                role: partner.role,
+                avatar: partner.avatar,
+                connectionId: conn._id,
+                conversationId: conversation._id,
+                status: conn.status
+            };
+        }));
+
+        res.status(200).json({ success: true, connections: enrichedConnections });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

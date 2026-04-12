@@ -1,5 +1,5 @@
 import Notification from "../models/Notification.js";
-import { getIO } from "../socket.js";
+import { getIO } from "../sockets/index.js";
 
 /**
  * @desc    Create a new notification & emit real-time event

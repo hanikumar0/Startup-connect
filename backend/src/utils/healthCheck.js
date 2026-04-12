@@ -179,6 +179,35 @@ const runServiceHealthCheck = async () => {
     } else {
         console.log(`${colors.green}✨ All systems operational.${colors.reset}\n`);
     }
+
+    // Run Data Pipeline Ingestion Audit
+    await runIngestionAudit();
+};
+
+const runIngestionAudit = async () => {
+    try {
+        const ExternalProfile = mongoose.model("ExternalProfile");
+        
+        // Count by source
+        const phCount = await ExternalProfile.countDocuments({ source: "producthunt" });
+        const ghCount = await ExternalProfile.countDocuments({ source: "github" });
+        const csvCount = await ExternalProfile.countDocuments({ source: { $in: ["csv", "investors_raw"] } });
+        const logoEnriched = await ExternalProfile.countDocuments({ logo: { $exists: true, $ne: "" } });
+        const total = await ExternalProfile.countDocuments({});
+
+        console.log(`${colors.cyan}${colors.bright}========================================`);
+        console.log(`📊 INGESTION SUMMARY (LIVE DB)`);
+        console.log(`========================================${colors.reset}`);
+        console.log(`${colors.bright}Product Hunt:${colors.reset} ${colors.green}${phCount}${colors.reset}`);
+        console.log(`${colors.bright}GitHub:${colors.reset} ${colors.green}${ghCount}${colors.reset}`);
+        console.log(`${colors.bright}investors_raw.csv:${colors.reset} ${colors.green}${csvCount}${colors.reset}`);
+        console.log(`${colors.bright}Logo.dev enriched:${colors.reset} ${colors.green}${logoEnriched}${colors.reset}`);
+        console.log(`${colors.bright}Total External Records:${colors.reset} ${colors.cyan}${colors.bright}${total}${colors.reset}`);
+        console.log(`${colors.cyan}${colors.bright}========================================${colors.reset}\n`);
+
+    } catch (e) {
+        console.error(`${colors.red}✖ Ingestion Audit Failed:${colors.reset}`, e.message);
+    }
 };
 
 export default runServiceHealthCheck;

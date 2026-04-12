@@ -16,10 +16,10 @@ const setupSockets = (server) => {
             methods: ["GET", "POST", "OPTIONS"],
             credentials: true
         },
-        transports: ["websocket", "polling"], // Allow polling as fallback if websocket fails
-        pingTimeout: 60000,
-        pingInterval: 25000,
-        allowEIO3: true // Support older clients if any
+        transports: ["websocket"], // FORCE Websocket Only to avoid "transport close" polling upgrades
+        pingTimeout: 120000,       // Increase to 2 minutes
+        pingInterval: 30000,
+        allowEIO3: true
     });
 
     console.log("🏁 [Socket.io] Server initialized with WebSocket & Polling support");
@@ -112,6 +112,14 @@ const setupSockets = (server) => {
         });
     });
 
+    return io;
+};
+
+export const getIO = () => {
+    if (!io) {
+        // This might happen if called before server.listen
+        return null;
+    }
     return io;
 };
 

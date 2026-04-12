@@ -11,6 +11,8 @@ const notificationSchema = new mongoose.Schema(
       type: String,
       enum: [
         "match_found",
+        "match_request",
+        "match_accepted",
         "new_message",
         "meeting_request",
         "meeting_accepted",
@@ -20,7 +22,10 @@ const notificationSchema = new mongoose.Schema(
         "investor_saved",
         "pitch_downloaded",
         "subscription_updated",
-        "system_alert"
+        "system_alert",
+        "claim_request",
+        "claim_approved",
+        "identity_verified"
       ],
       required: true,
     },

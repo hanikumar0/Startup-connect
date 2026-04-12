@@ -1,161 +1,108 @@
 import Meeting from "../models/Meeting.js";
-import Startup from "../models/Startup.js";
-import Investor from "../models/Investor.js";
-import Message from "../models/Message.js";
-import Conversation from "../models/Conversation.js";
 import User from "../models/User.js";
-import { createNotification } from "../services/notificationService.js";
+import Notification from "../models/Notification.js";
+import Conversation from "../models/Conversation.js";
+import Message from "../models/Message.js";
 
-// @desc    Request a meeting
-// @route   POST /api/meetings/request
-export const requestMeeting = async (req, res) => {
+// @desc    Schedule a meeting
+// @route   POST /api/meetings/schedule
+export const scheduleMeeting = async (req, res) => {
     try {
-        const { title, description, startupId, investorId, meetingDate, meetingTime, duration, timezone, conversationId } = req.body;
+        const { title, guestId, startTime, duration = 30 } = req.body;
+        const userId = req.user.id;
+
+        // Auto-detect conversation if it exists
+        const conversation = await Conversation.findOne({
+            participants: { $all: [userId, guestId] }
+        });
 
         const meeting = await Meeting.create({
             title,
-            description,
-            startupId,
-            investorId,
-            requestedBy: req.user.id,
-            meetingDate,
-            meetingTime,
+            creatorId: userId,
+            participantId: guestId,
+            startTime,
             duration,
-            timezone,
-            conversationId
+            conversationId: conversation?._id,
+            status: "scheduled"
         });
 
-        // 1. Create message in chat
-        if (conversationId) {
+        // Add 📅 notification message to chat if conversation exists
+        if (conversation) {
             await Message.create({
-                conversationId,
-                senderId: req.user.id,
-                text: `📅 Meeting Proposed: ${title} on ${new Date(meetingDate).toLocaleDateString()} at ${meetingTime}`,
+                conversationId: conversation._id,
+                senderId: userId,
+                text: `📅 New Meeting Scheduled: ${title} at ${new Date(startTime).toLocaleString()}`,
                 messageType: "meeting"
             });
             
-            await Conversation.findByIdAndUpdate(conversationId, {
+            await Conversation.findByIdAndUpdate(conversation._id, {
                 lastMessage: {
-                    text: `📅 Meeting Requested: ${title}`,
-                    senderId: req.user.id,
+                    text: `📅 Scheduled: ${title}`,
+                    senderId: userId,
                     at: new Date()
                 }
             });
         }
 
-        // 2. Create notification for the other party
-        let targetUserId;
-        if (req.user.role === "startup") {
-            const inv = await Investor.findById(investorId);
-            targetUserId = inv.userId;
-        } else {
-            const sta = await Startup.findById(startupId);
-            targetUserId = sta.userId;
-        }
-
-        await createNotification({
-            userId: targetUserId,
-            type: "meeting_request",
-            title: "New Meeting Request",
-            message: `${req.user.name} has requested a meeting: ${title}`,
-            link: "/meetings"
+        // Create persistent notification for guest
+        await Notification.create({
+            userId: guestId,
+            sender: userId,
+            type: "meeting_scheduled",
+            title: "Meeting Scheduled",
+            message: `${req.user.name} has scheduled a meeting with you.`,
+            link: "/dashboard/meetings"
         });
 
-        res.status(201).json({ success: true, data: meeting });
+        res.status(201).json({ success: true, meeting });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @desc    Accept a meeting
-// @route   PUT /api/meetings/accept/:id
-export const acceptMeeting = async (req, res) => {
-    try {
-        const meeting = await Meeting.findById(req.params.id);
-        if (!meeting) return res.status(404).json({ success: false, message: "Meeting not found" });
-
-        meeting.status = "accepted";
-        meeting.meetingLink = "https://meet.google.com/abc-defg-hij"; // Placeholder or dynamic link generator
-        await meeting.save();
-
-        // 1. Chat Message
-        if (meeting.conversationId) {
-            await Message.create({
-                conversationId: meeting.conversationId,
-                senderId: req.user.id,
-                text: `✅ Meeting Confirmed: ${new Date(meeting.meetingDate).toLocaleDateString()} at ${meeting.meetingTime}. Join here: ${meeting.meetingLink}`,
-                messageType: "meeting"
-            });
-        }
-
-        // 2. Notification
-        await createNotification({
-            userId: meeting.requestedBy,
-            type: "meeting_accepted",
-            title: "Meeting Accepted",
-            message: `${req.user.name} accepted your meeting request.`,
-            link: "/meetings"
-        });
-
-        res.status(200).json({ success: true, data: meeting });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-// @desc    Reject a meeting
-// @route   PUT /api/meetings/reject/:id
-export const rejectMeeting = async (req, res) => {
-    try {
-        const meeting = await Meeting.findById(req.params.id);
-        meeting.status = "rejected";
-        await meeting.save();
-
-        if (meeting.conversationId) {
-            await Message.create({
-                conversationId: meeting.conversationId,
-                senderId: req.user.id,
-                text: `❌ Meeting Declined: ${meeting.title}`,
-                messageType: "text"
-            });
-        }
-
-        res.status(200).json({ success: true, data: meeting });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-// @desc    Get all meetings for user
-// @route   GET /api/meetings
+// @desc    Get all meetings for user (Creator or Participant)
+// @route   GET /api/meetings/my-meetings
 export const getMyMeetings = async (req, res) => {
     try {
-        let query = {};
-        if (req.user.role === "startup") {
-            const startup = await Startup.findOne({ userId: req.user.id });
-            query = { startupId: startup._id };
-        } else if (req.user.role === "investor") {
-            const investor = await Investor.findOne({ userId: req.user.id });
-            query = { investorId: investor._id };
-        }
+        const userId = req.user.id;
+        
+        const meetings = await Meeting.find({
+            $or: [{ creatorId: userId }, { participantId: userId }]
+        })
+        .populate("creatorId participantId", "name email role avatar")
+        .sort({ startTime: 1 });
 
-        const meetings = await Meeting.find(query)
-            .populate("startupId", "startupName logo")
-            .populate("investorId", "investorName logo firmName")
-            .sort("meetingDate");
+        // Map meetings to include a "partner" name relative to the current user
+        const formatted = meetings.map(m => {
+            const partner = m.creatorId._id.toString() === userId.toString() ? m.participantId : m.creatorId;
+            return {
+                ...m.toObject(),
+                partner: partner.name,
+                partnerRole: partner.role,
+                partnerAvatar: partner.avatar,
+                roomId: m._id // Using meeting ID as room ID for simplicity
+            };
+        });
 
-        res.status(200).json({ success: true, data: meetings });
+        res.status(200).json({ success: true, meetings: formatted });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @desc    Cancel a meeting
-// @route   PUT /api/meetings/cancel/:id
-export const cancelMeeting = async (req, res) => {
+// @desc    Respond to meeting (Accept/Reject)
+// @route   PUT /api/meetings/:id/respond
+export const respondToMeeting = async (req, res) => {
     try {
-        const meeting = await Meeting.findByIdAndUpdate(req.params.id, { status: "cancelled" }, { new: true });
-        res.status(200).json({ success: true, data: meeting });
+        const { status } = req.body;
+        const meeting = await Meeting.findById(req.params.id);
+        
+        if (!meeting) return res.status(404).json({ success: false, message: "Meeting not found" });
+
+        meeting.status = status; // accepted, rejected, cancelled
+        await meeting.save();
+
+        res.status(200).json({ success: true, meeting });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

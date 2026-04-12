@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Rocket, Loader2, AlertCircle, Quote, Github, Linkedin, Mail, Eye, EyeOff } from "lucide-react";
+import { Rocket, Loader2, AlertCircle, Quote, Github, Linkedin, Mail, Eye, EyeOff, Zap } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { motion } from "framer-motion";
@@ -201,6 +201,25 @@ function LoginContent() {
                             Login
                         </Button>
                     </form>
+
+                    <Button 
+                        type="button"
+                        onClick={() => {
+                            setFormData({
+                                email: "investor.demo@startupconnect.com",
+                                password: "Demo@123"
+                            });
+                            // Small timeout to ensure state is updated before submit
+                            setTimeout(() => {
+                                const form = document.querySelector('form');
+                                form?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                            }, 100);
+                        }}
+                        className="mt-4 h-14 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black italic tracking-[2px] shadow-lg transition-all uppercase text-[10px]"
+                    >
+                        <Zap className="mr-2 h-4 w-4 fill-white" />
+                        Login as Demo Investor
+                    </Button>
 
                     <p className="mt-12 text-center text-sm font-bold italic text-muted-foreground">
                         No account?{" "}

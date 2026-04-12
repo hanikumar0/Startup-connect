@@ -97,90 +97,85 @@ export const discoverInvestors = async (req, res) => {
 // @desc    External discovery master aggregator (supports federated fetching from scraper, API, CSV)
 export const discoverExternal = async (req, res) => {
     try {
-        const { industry, location, q, source, page = 1, limit = 8 } = req.query;
+        const { industry, location, q, source, page = 1, limit = 50 } = req.query; // Higher limit for reliability
         const ExternalProfile = (await import("../models/ExternalProfile.js")).default;
         
-        // FIX: Strict role-based filtering (Opposite role only)
-        // If logged in user is a startup, they only see external investors.
-        // If logged in user is an investor, they only see external startups.
         const userRole = req.user?.role?.toLowerCase() || "startup";
         const targetType = userRole === "startup" ? "investor" : "startup";
         
-        const allCount = await ExternalProfile.countDocuments({});
-        
-        console.log("Total:", allCount);
-        console.log("Target:", targetType);
-
-        let query = { 
-            $or: [
-                { type: targetType },
-                { leadType: targetType },
-                { role: targetType }
-            ]
-        };
-
-        // For startups, we specifically include archival sources in the primary filter
-        if (targetType === "investor") {
-            query.$or.push({ source: "investors_raw" });
-            query.$or.push({ source: "csv" });
-        }
-
+        // 1. Initial Inclusive Fetch
+        let query = {};
         const hasFilters = industry || location || q || source;
-        if (industry && industry !== "All" && industry !== "All Industries") {
-            query.industry = { $regex: industry, $options: "i" };
-        }
-        if (location) query.location = { $regex: location, $options: "i" };
-        if (source) query.source = source; 
 
-        if (q) {
-            query.$or = [
-                { name: { $regex: q, $options: "i" } },
-                { firm: { $regex: q, $options: "i" } },
-                { description: { $regex: q, $options: "i" } }
-            ];
-        }
-
-        const skip = (page - 1) * limit;
-        let profiles = await ExternalProfile.find(query)
-            .sort({ "metadata.stars": -1, createdAt: -1 })
-            .skip(skip)
-            .limit(Number(limit));
-
-        let total = await ExternalProfile.countDocuments(query);
-        console.log("Filtered:", total);
-
-        let fallbackApplied = false;
-        if (profiles.length === 0 && !hasFilters) {
-            console.log("Fallback triggered: Returning all archival investors.");
-            fallbackApplied = true;
-            profiles = await ExternalProfile.find({ source: "investors_raw" })
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(Number(limit));
-            
-            if (profiles.length === 0) {
-                profiles = await ExternalProfile.find({})
-                    .sort({ createdAt: -1 })
-                    .skip(skip)
-                    .limit(Number(limit));
-                total = allCount;
-            } else {
-                total = await ExternalProfile.countDocuments({ source: "investors_raw" });
+        if (hasFilters) {
+            query.$and = [];
+            if (industry && industry !== "All" && industry !== "All Industries") {
+                query.$and.push({ industry: { $regex: industry, $options: "i" } });
+            }
+            if (location) query.$and.push({ location: { $regex: location, $options: "i" } });
+            if (source) query.$and.push({ source: source });
+            if (q) {
+                query.$and.push({
+                    $or: [
+                        { name: { $regex: q, $options: "i" } },
+                        { firm: { $regex: q, $options: "i" } },
+                        { description: { $regex: q, $options: "i" } }
+                    ]
+                });
             }
         }
 
-        const rawCount = await ExternalProfile.countDocuments({ source: "investors_raw" });
-        console.log("Source investors_raw:", rawCount);
-        console.log("External DB count:", total);
+        // STEP 1 — GET TOTAL FROM DATABASE
+        const totalCount = await ExternalProfile.countDocuments({});
+        
+        const skip = (page - 1) * limit;
+        const allFetched = await ExternalProfile.find({})
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit))
+            .lean();
 
+        console.log(`\n================================`);
+        console.log(`🔍 DATABASE FETCH CHECK`);
+        console.log(`- Request User Role: ${userRole}`);
+        console.log(`- Total DB Records: ${totalCount}`);
+        console.log(`- Records Fetched (Page ${page}): ${allFetched.length}`);
+        console.log(`================================`);
+
+        if (allFetched.length === 0) {
+            console.warn("⚠️ [External Discovery] Database query returned empty array!");
+        }
+
+        // STEP 2 — APPLY ROLE-BASED FILTERING (Institutional Logic)
+        // We ensure we send both, but the frontend will filter based on user role
+        const finalData = allFetched;
+        
+        const phCount = finalData.filter(x => x.source === 'producthunt').length;
+        const ghCount = finalData.filter(x => x.source === 'github').length;
+        const csvCount = finalData.filter(x => x.source === 'csv' || x.source === 'investors_raw').length;
+
+        console.log("🧩 BACKEND PROCESSING CHECK:");
+        console.log(`- Product Hunt:       ${phCount}`);
+        console.log(`- GitHub:             ${ghCount}`);
+        console.log(`- CSV Investors:      ${csvCount}`);
+        console.log(`- Final Payload Size: ${finalData.length}`);
+        console.log("------------------------------------------\n");
+
+        // PART 2: Categorized Response
+        const startups = finalData.filter(x => x.type?.toLowerCase() === "startup");
+        const investors = finalData.filter(x => x.type?.toLowerCase() === "investor");
+
+        // STEP 4 — SEND RESPONSE (No mock data)
         res.status(200).json({
             success: true,
-            total,
-            page: Number(page),
-            pages: Math.ceil(total / limit),
-            targetType: fallbackApplied ? "all" : targetType,
-            fallbackStatus: fallbackApplied,
-            data: profiles
+            audit: {
+                db_total: totalCount,
+                fetched: finalData.length,
+                rendered_suggestion: finalData.length
+            },
+            startups,
+            investors,
+            data: finalData
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -190,23 +185,74 @@ export const discoverExternal = async (req, res) => {
 // @desc    Fetch only registered users for Smart Match baseline
 export const getRegisteredUsers = async (req, res) => {
     try {
-        const { type } = req.query; // investor or startup
+        const { type, q } = req.query; // investor or startup
         
+        const searchRegex = q ? { $regex: q, $options: "i" } : null;
+        let query = { isPublic: true, userId: { $exists: true, $ne: null } };
+
+        if (searchRegex) {
+            if (type === "investor") {
+                query.$or = [
+                    { investorName: searchRegex },
+                    { firmName: searchRegex },
+                    { investmentThesis: searchRegex }
+                ];
+            } else {
+                query.$or = [
+                    { startupName: searchRegex },
+                    { description: searchRegex },
+                    { industry: searchRegex }
+                ];
+            }
+        }
+
         let profiles;
         if (type === "investor") {
-            profiles = await Investor.find({ isPublic: true, userId: { $exists: true, $ne: null } })
+            profiles = await Investor.find(query)
                 .populate("userId", "name avatar lastLogin")
                 .limit(50);
         } else if (type === "startup") {
-            profiles = await Startup.find({ isPublic: true, userId: { $exists: true, $ne: null } })
+            profiles = await Startup.find(query)
                 .populate("userId", "name avatar lastLogin")
                 .limit(50);
         } else {
             return res.status(400).json({ success: false, message: "Type required: investor/startup" });
         }
 
+        // STEP 5 — SMART MATCH LOG
+        if (profiles.length === 0) {
+            console.log("No registered matches, falling back to external leads.");
+            const ExternalProfile = (await import("../models/ExternalProfile.js")).default;
+            const fallback = await ExternalProfile.find({})
+                .sort({ createdAt: -1 })
+                .limit(20)
+                .lean();
+            
+            // Map external to match registry structure for frontend compatibility
+            const mappedFallback = fallback.map(item => ({
+                ...item,
+                isExternalLead: true, // Marker for UI
+                name: item.name,
+                firmName: item.firm,
+                industry: item.industry || "Technology",
+                location: item.location || "Global"
+            }));
+
+            console.log("Smart matches sent (Fallback):", mappedFallback.length);
+
+            return res.status(200).json({
+                success: true,
+                count: mappedFallback.length,
+                data: mappedFallback,
+                isFallback: true
+            });
+        }
+
+        console.log("Smart matches sent:", profiles.length);
+
         res.status(200).json({
             success: true,
+            count: profiles.length,
             data: profiles
         });
     } catch (error) {

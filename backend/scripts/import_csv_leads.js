@@ -20,7 +20,6 @@ const processCSV = async () => {
         console.log("Connected to MongoDB.");
 
         const potentialPaths = [
-            { path: path.join(process.cwd(), 'leads.csv'), source: 'csv' },
             { path: path.join(process.cwd(), 'investors_raw.csv'), source: 'investors_raw' },
             { path: path.join(process.cwd(), '..', '.agent', 'scratch', 'investors_raw.csv'), source: 'investors_raw' }
         ];
@@ -29,8 +28,6 @@ const processCSV = async () => {
 
         if (existingFiles.length === 0) {
             console.error(`\nERROR: No CSV source files found.`);
-            console.log("Looked in:");
-            potentialPaths.forEach(p => console.log(` - ${p.path}`));
             process.exit(1);
         }
 
@@ -43,41 +40,18 @@ const processCSV = async () => {
 
             for await (const data of stream) {
                 const name = data['Investor name'] || data['Name'] || "";
-                const website = data['Website'] || "";
-                const location = data['Global HQ'] || data['Location'] || "Not specified";
-                const countries = data['Countries of investment'] ? data['Countries of investment'].split(',').map(c => c.trim()) : [];
-                const stage = data['Stage of investment'] || "Any";
-                const description = data['Investment thesis'] || "Not specified";
-                const invType = data['Investor type'] || "VC";
-                const minCheck = data['First cheque minimum'] || "Not specified";
-                const maxCheck = data['First cheque maximum'] || "Not specified";
                 
                 if (name && name.trim() !== "") {
                     fileResults.push({
                         name: name.trim(),
                         firm: name.trim(),
-                        website: website.trim(),
-                        location: location.trim(),
-                        countries: countries,
-                        stage: stage.trim(),
-                        description: description.trim(),
-                        investor_type: invType.trim(),
-                        min_check: minCheck.trim(),
-                        max_check: maxCheck.trim(),
+                        website: data['Website'] || "",
+                        location: data['Global HQ'] || data['Location'] || "Not specified",
                         industry: "Venture Capital",
-                        // FORCE TYPE AND SOURCE PER REQUIREMENT
-                        source: fileObj.source,
+                        source: "investors_raw",
                         type: "investor",
                         leadType: "investor",
-                        role: "investor",
-                        isExternal: true,
-                        metadata: {
-                            originalData: data,
-                            logo: website ? (() => {
-                                try { return `https://img.logo.dev/${new URL(website).hostname}?token=${process.env.LOGODEV_PUBLISHABLE_KEY}`; }
-                                catch(e) { return null; }
-                            })() : null
-                        }
+                        isExternal: true
                     });
                 }
             }
@@ -89,7 +63,7 @@ const processCSV = async () => {
 
             for (const profile of fileResults) {
                 try {
-                    const existing = await ExternalProfile.findOne({ name: profile.name, source: profile.source });
+                    const existing = await ExternalProfile.findOne({ name: profile.name, source: "investors_raw" });
                     if (existing) {
                         await ExternalProfile.updateOne({ _id: existing._id }, { $set: profile });
                         updated++;
@@ -104,14 +78,9 @@ const processCSV = async () => {
             console.log(`Finished ${fileName}: Added ${added}, Updated ${updated}.\n`);
         }
 
-        const total = await ExternalProfile.countDocuments();
-        const investorsRawCount = await ExternalProfile.countDocuments({ source: "investors_raw" });
-        const filtered = await ExternalProfile.countDocuments({ type: "investor" });
-
+        const total = await ExternalProfile.countDocuments({ source: "investors_raw" });
         console.log(`========================================`);
-        console.log(`Total: ${total}`);
-        console.log(`Source investors_raw: ${investorsRawCount}`);
-        console.log(`Filtered: ${filtered}`);
+        console.log(`Total External Records (investors_raw): ${total}`);
         console.log(`========================================`);
 
         console.log(`\n✅ Strategic Batch Import Complete!`);

@@ -4,6 +4,7 @@ import {
 } from "../services/matchingService.js";
 import Startup from "../models/Startup.js";
 import Investor from "../models/Investor.js";
+import Connection from "../models/Connection.js";
 
 // @desc    Get matching investors for a specific startup
 // @route   GET /api/match/investors/:startupId
@@ -51,9 +52,42 @@ export const getMyMatches = async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit);
         const paginatedMatches = matches.slice(skip, skip + Number(limit));
 
+        // Add connection status
+        const currentUserId = req.user.id;
+        const sentRequests = await Connection.find({ sender: currentUserId });
+        const receivedRequests = await Connection.find({ recipient: currentUserId });
+
+        const matchesWithStatus = paginatedMatches.map(match => {
+            const profile = role === "startup" ? match.investor : match.startup;
+            const targetUserId = profile.userId?._id?.toString() || profile.userId?.toString();
+            
+            const sent = sentRequests.find(conn => conn.recipient.toString() === targetUserId);
+            const received = receivedRequests.find(conn => conn.sender.toString() === targetUserId);
+
+            let connectionStatus = "NONE";
+            let connectionId = null;
+
+            if (received && received.status === "PENDING") {
+                connectionStatus = "RECEIVED_PENDING";
+                connectionId = received._id;
+            } else if (sent) {
+                connectionStatus = sent.status;
+                connectionId = sent._id;
+            } else if (received) {
+                connectionStatus = `RECEIVED_${received.status}`;
+                connectionId = received._id;
+            }
+
+            return {
+                ...match,
+                connectionStatus,
+                connectionId
+            };
+        });
+
         res.status(200).json({ 
             success: true, 
-            data: paginatedMatches,
+            data: matchesWithStatus,
             total: matches.length,
             page: Number(page),
             pages: Math.ceil(matches.length / Number(limit))

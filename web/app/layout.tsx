@@ -42,6 +42,8 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
+import IdleTimer from "@/components/auth/IdleTimer";
+import { SocketProvider } from "@/components/providers/SocketProvider";
 
 export default function RootLayout({
   children,
@@ -59,8 +61,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster position="bottom-right" richColors />
+          <SocketProvider>
+            {children}
+            <IdleTimer />
+            <Toaster position="bottom-right" richColors />
+          </SocketProvider>
         </ThemeProvider>
       </body>
     </html>

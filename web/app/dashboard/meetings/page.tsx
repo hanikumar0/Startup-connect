@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Video, Calendar as CalendarIcon, Clock, Plus, ExternalLink, ArrowRight, X, User as UserIcon, Loader2 } from "lucide-react";
+import { Video, Calendar as CalendarIcon, Clock, Plus, ArrowRight, X, Loader2, Zap, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 
 export default function MeetingCenter() {
@@ -75,164 +76,173 @@ export default function MeetingCenter() {
                 setMeetings((prev): any => [...prev, data.meeting]);
                 setIsModalOpen(false);
                 setFormData({ title: "", partnerId: "", date: "", time: "" });
-                alert("Meeting Scheduled Successfully!");
-            } else {
-                alert(data.message || "Failed to schedule meeting");
             }
         } catch (error) {
             console.error("Error scheduling meeting:", error);
-            alert("Error scheduling meeting.");
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="container mx-auto py-12 px-4 max-w-5xl animate-in fade-in duration-700">
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Meeting Center</h1>
-                    <p className="text-slate-500">Manage and attend your scheduled video meetings.</p>
-                </div>
-                <Button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 h-11 px-6 font-bold gap-2">
-                    <Plus className="h-4 w-4" /> Schedule New
+        <div className="space-y-8 pb-20">
+            {/* Simple Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-50">
+               <div>
+                  <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                     <span>Meetings</span>
+                     <ChevronRight size={8} className="text-slate-300" />
+                     <span className="text-slate-900/60 font-bold">Schedule</span>
+                  </div>
+                  <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                    Your Meetings
+                  </h1>
+               </div>
+               
+               <div className="flex items-center gap-8 text-right">
+                  <div>
+                     <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Active Sessions</p>
+                     <p className="text-sm font-bold text-slate-900">{meetings.length}</p>
+                  </div>
+               </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row justify-between items-center bg-slate-50/50 p-6 rounded-xl border border-slate-100 gap-4">
+               <div>
+                  <h3 className="text-sm font-bold text-slate-900">Schedule New Session</h3>
+                  <p className="text-[11px] font-medium text-slate-400 mt-0.5">Invite your connections to a video call.</p>
+               </div>
+               <Button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 hover:bg-slate-900 text-white h-9 px-6 rounded-lg font-bold uppercase text-[10px] tracking-widest gap-2">
+                    <Plus size={14} /> 
+                    New Meeting
                 </Button>
             </div>
 
             {meetings.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {meetings.map((meeting: any) => (
-                        <Card key={meeting._id || meeting.id} className="border-none shadow-xl hover:shadow-2xl transition-all bg-white overflow-hidden group">
-                            <div className="h-1.5 bg-indigo-600 w-full" />
-                            <CardHeader className="pb-2">
-                                <div className="flex justify-between items-start">
-                                    <Badge variant="outline" className="mb-2 text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border-indigo-100 px-2 py-0.5">
+                        <Card key={meeting._id || meeting.id} className="border-slate-100 shadow-sm bg-white rounded-xl overflow-hidden group">
+                            <CardHeader className="p-5 pb-4">
+                                <div className="flex justify-between items-start mb-4">
+                                    <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[8px] uppercase tracking-widest px-2.5 py-0.5 rounded-full">
                                         {meeting.status}
                                     </Badge>
-                                    <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
+                                    <div className="h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
                                         <Video size={16} />
                                     </div>
                                 </div>
-                                <CardTitle className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{meeting.title}</CardTitle>
-                                <CardDescription className="font-medium">with {meeting.partner}</CardDescription>
+                                <CardTitle className="text-sm font-bold text-slate-900 mb-1 group-hover:text-indigo-600 transition-colors">{meeting.title}</CardTitle>
+                                <CardDescription className="font-bold text-[9px] uppercase tracking-widest text-slate-400">With {meeting.partner}</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="space-y-3 mt-4">
-                                    <div className="flex items-center gap-3 text-sm text-slate-600 font-bold">
-                                        <CalendarIcon size={16} className="text-indigo-600" />
-                                        {new Date(meeting.startTime || meeting.date).toLocaleDateString()}
-                                    </div>
-                                    <div className="flex items-center gap-3 text-sm text-slate-600 font-black font-mono">
-                                        <Clock size={16} className="text-indigo-600" />
-                                        {meeting.startTime ? new Date(meeting.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : meeting.time}
+                            <CardContent className="p-5 pt-0">
+                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-50 mb-5 group-hover:bg-indigo-50/50 transition-colors">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-3 text-[11px] text-slate-500 font-bold group-hover:text-slate-900 transition-colors">
+                                            <CalendarIcon size={14} className="text-indigo-600" />
+                                            {new Date(meeting.startTime || meeting.date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                        </div>
+                                        <div className="flex items-center gap-3 text-[11px] text-slate-500 font-bold group-hover:text-slate-900 transition-colors">
+                                            <Clock size={14} className="text-indigo-600" />
+                                            {meeting.startTime ? new Date(meeting.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : meeting.time}
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-8">
-                                    <Link href={`/dashboard/meetings/room/${meeting.roomId}`}>
-                                        <Button className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 shadow-lg shadow-indigo-100 font-bold gap-2">
-                                            Join Meeting <ExternalLink className="h-4 w-4" />
-                                        </Button>
-                                    </Link>
-                                </div>
+                                <Link href={`/dashboard/meetings/room/${meeting.roomId}`}>
+                                    <Button className="w-full h-10 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-[10px] uppercase tracking-widest gap-2">
+                                        Join Room <ArrowRight className="h-3 w-3" />
+                                    </Button>
+                                </Link>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
             ) : (
-                <Card className="border-dashed border-2 border-slate-200 bg-transparent rounded-3xl">
-                    <CardContent className="flex flex-col items-center justify-center py-24 text-center">
-                        <div className="h-24 w-24 bg-white rounded-3xl shadow-xl shadow-slate-100 flex items-center justify-center mb-8 border border-slate-50">
-                            <CalendarIcon className="h-12 w-12 text-slate-200" />
-                        </div>
-                        <h3 className="text-2xl font-black text-slate-900 mb-3">No Meetings Scheduled</h3>
-                        <p className="max-w-md text-slate-500 mb-10 text-lg leading-relaxed">
-                            You don't have any upcoming meetings. Connect with investors or startups to schedule your first pitch session.
-                        </p>
-                        <Button variant="outline" className="gap-3 border-slate-200 h-12 px-8 rounded-xl font-bold text-slate-600 hover:bg-white hover:text-indigo-600 hover:border-indigo-200 transition-all" asChild>
-                            <Link href="/dashboard/discover">
-                                Find People <ArrowRight className="h-4 w-4" />
-                            </Link>
-                        </Button>
-                    </CardContent>
-                </Card>
+                <div className="py-20 text-center bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
+                    <div className="h-16 w-16 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-6">
+                        <CalendarIcon className="h-8 w-8 text-slate-200" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">No Meetings Scheduled</h3>
+                    <p className="max-w-xs mx-auto text-[11px] font-medium text-slate-400 mt-2 italic leading-relaxed">
+                        Schedule a meeting with your connections to discuss opportunities and collaborations.
+                    </p>
+                    <Button variant="outline" className="mt-8 h-10 px-6 rounded-lg font-bold text-[10px] uppercase tracking-widest border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-indigo-600 transition-all" asChild>
+                        <Link href="/dashboard/discover">
+                            Find Connections
+                        </Link>
+                    </Button>
+                </div>
             )}
 
-            {/* Schedule Meeting Modal */}
+            {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)} />
-                    <Card className="relative w-full max-w-md border-none shadow-2xl bg-white rounded-3xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="h-2 bg-indigo-600 w-full" />
-                        <CardHeader className="p-8 pb-4">
-                            <div className="flex items-center justify-between mb-2">
-                                <CardTitle className="text-2xl font-black text-slate-900">Schedule Meeting</CardTitle>
-                                <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="rounded-full hover:bg-slate-100">
-                                    <X className="h-5 w-5" />
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+                        <div className="p-8">
+                            <div className="flex items-center justify-between mb-8">
+                                <div>
+                                   <div className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest mb-1">New Session</div>
+                                   <h2 className="text-xl font-bold text-slate-900">Schedule Meeting</h2>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="h-10 w-10 text-slate-400">
+                                    <X size={18} />
                                 </Button>
                             </div>
-                            <CardDescription className="text-slate-500 font-medium text-lg">Set up a session with your connections.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-8 pt-4">
-                            <form onSubmit={handleSchedule} className="space-y-5">
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Meeting Title</Label>
+                            
+                            <form onSubmit={handleSchedule} className="space-y-6">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">Meeting Title</Label>
                                     <Input
                                         required
-                                        placeholder="e.g. Seed Round Q&A"
-                                        className="h-12 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium"
+                                        placeholder="Discussion Title"
+                                        className="h-11 bg-slate-50 border-slate-100 rounded-lg px-4 text-xs font-medium"
                                         value={formData.title}
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Select Partner</Label>
+                                <div className="space-y-1.5 relative">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">Participant</Label>
                                     <select
                                         required
-                                        className="w-full h-12 bg-slate-50 border-none rounded-xl px-4 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                                        className="w-full h-11 bg-slate-50 border-slate-100 rounded-lg px-4 text-xs font-bold outline-none appearance-none"
                                         value={formData.partnerId}
                                         onChange={(e) => setFormData({ ...formData, partnerId: e.target.value })}
                                     >
-                                        <option value="">Choose a connection...</option>
+                                        <option value="">Select Connection...</option>
                                         {connections.map((conn: any) => (
-                                            <option key={conn.id} value={conn.id}>{conn.name} ({conn.role})</option>
+                                            <option key={conn.id} value={conn.id}>{conn.name}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Date</Label>
-                                        <div className="relative">
-                                            <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-500 pointer-events-none" />
-                                            <Input
-                                                required
-                                                type="date"
-                                                className="h-12 bg-slate-50 border-none rounded-xl pl-11 focus:ring-2 focus:ring-indigo-500 font-medium"
-                                                value={formData.date}
-                                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                            />
-                                        </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">Date</Label>
+                                        <Input
+                                            required
+                                            type="date"
+                                            className="h-11 bg-slate-50 border-slate-100 rounded-lg px-4 text-xs"
+                                            value={formData.date}
+                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                        />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Time</Label>
-                                        <div className="relative">
-                                            <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-500 pointer-events-none" />
-                                            <Input
-                                                required
-                                                type="time"
-                                                className="h-12 bg-slate-50 border-none rounded-xl pl-11 focus:ring-2 focus:ring-indigo-500 font-medium"
-                                                value={formData.time}
-                                                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                                            />
-                                        </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">Time</Label>
+                                        <Input
+                                            required
+                                            type="time"
+                                            className="h-11 bg-slate-50 border-slate-100 rounded-lg px-4 text-xs"
+                                            value={formData.time}
+                                            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                                        />
                                     </div>
                                 </div>
-                                <Button type="submit" disabled={isLoading} className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-lg font-black rounded-2xl shadow-xl shadow-indigo-100 transition-all mt-4">
-                                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : "Confirm Schedule"}
+                                <Button type="submit" disabled={isLoading} className="w-full h-11 bg-indigo-600 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-sm mt-4">
+                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Schedule Meeting"}
                                 </Button>
                             </form>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </motion.div>
                 </div>
             )}
         </div>

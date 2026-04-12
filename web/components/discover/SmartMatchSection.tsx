@@ -8,7 +8,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
     Clock, 
     Zap,
-    Loader2
+    Loader2,
+    CheckCircle2,
+    ArrowUpRight
 } from "lucide-react";
 
 import { apiFetchJSON } from "@/lib/api";
@@ -59,7 +61,9 @@ export default function SmartMatchSection({ userRole, search = "", filters, onAc
                         linkedinUrl: profile.linkedinUrl || profile.socialLinks?.linkedin || null,
                         source: "registered", // Strict data filter requirement
                         lastActive: profile.userId?.lastLogin ? new Date(profile.userId.lastLogin).toLocaleDateString() : "Offline",
-                        reasons: item.reasons || []
+                        reasons: item.reasons || [],
+                        connectionStatus: item.connectionStatus || "NONE",
+                        connectionId: item.connectionId || null
                     };
                 });
 
@@ -100,16 +104,51 @@ export default function SmartMatchSection({ userRole, search = "", filters, onAc
             });
 
             if (data.success) {
-                alert("Connection request sent successfully!");
                 if (onActionTaken) onActionTaken();
-                // Optionally update local state to hide connect button
                 setMatches(prev => prev.map(m => m.id === profileId ? { ...m, connectionStatus: "PENDING" } : m));
             } else {
-                alert(data.message || "Failed to send connection request");
+                alert(data.message || "Failed to send request");
             }
         } catch (err) {
             console.error("Connection failed:", err);
-            alert("An error occurred while sending the request.");
+        } finally {
+            setConnectingId(null);
+        }
+    };
+
+    const handleAccept = async (connectionId: string, profileId: string) => {
+        setConnectingId(profileId);
+        try {
+            const data = await apiFetchJSON(`/api/users/connect/${connectionId}`, {
+                method: "PUT",
+                body: JSON.stringify({ status: "ACCEPTED" }),
+            });
+            if (data.success) {
+                setMatches(prev => prev.map(m => m.id === profileId ? { ...m, connectionStatus: "ACCEPTED" } : m));
+                if (onActionTaken) onActionTaken();
+            }
+        } catch (err) {
+            console.error("Accept failed:", err);
+        } finally {
+            setConnectingId(null);
+        }
+    };
+
+    const handleReject = async (connectionId: string, profileId: string) => {
+        setConnectingId(profileId);
+        try {
+            const data = await apiFetchJSON(`/api/users/connect/${connectionId}`, {
+                method: "PUT",
+                body: JSON.stringify({ status: "REJECTED" }),
+            });
+            if (data.success) {
+                setMatches(prev => prev.map(m => m.id === profileId ? { ...m, connectionStatus: "REJECTED_RECENT" } : m));
+                setTimeout(() => {
+                    setMatches(prev => prev.map(m => m.id === profileId ? { ...m, connectionStatus: "NONE" } : m));
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("Reject failed:", err);
         } finally {
             setConnectingId(null);
         }
@@ -282,17 +321,45 @@ export default function SmartMatchSection({ userRole, search = "", filters, onAc
                                             </p>
                                         </div>
                                         
-                                        <Button 
-                                            onClick={() => handleConnect(item.id)}
-                                            disabled={connectingId === item.id || item.connectionStatus === "PENDING"}
-                                            className="rounded-xl h-11 px-6 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest hover:bg-primary transition-all shadow-lg shadow-slate-200/50 disabled:opacity-50"
-                                         >
-                                             {connectingId === item.id ? (
-                                                 <Loader2 className="animate-spin h-4 w-4" />
-                                             ) : (
-                                                 item.connectionStatus === "PENDING" ? "Pending" : "Connect"
-                                             )}
-                                         </Button>
+                                         {item.connectionStatus === "ACCEPTED" ? (
+                                            <Button disabled className="rounded-xl h-11 px-6 bg-emerald-50 text-emerald-600 font-bold text-xs uppercase tracking-widest border border-emerald-100 italic gap-2">
+                                                <CheckCircle2 className="h-4 w-4" /> Connected
+                                            </Button>
+                                         ) : item.connectionStatus === "RECEIVED_PENDING" ? (
+                                            <div className="flex gap-2">
+                                                <Button 
+                                                    onClick={() => handleAccept(item.connectionId, item.id)}
+                                                    disabled={connectingId === item.id}
+                                                    className="rounded-xl h-11 px-4 bg-indigo-600 text-white font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all"
+                                                >
+                                                    {connectingId === item.id ? <Loader2 className="animate-spin h-3 w-3" /> : "Accept"}
+                                                </Button>
+                                                <Button 
+                                                    onClick={() => handleReject(item.connectionId, item.id)}
+                                                    disabled={connectingId === item.id}
+                                                    variant="outline"
+                                                    className="rounded-xl h-11 px-4 border-slate-200 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600"
+                                                >
+                                                    Reject
+                                                </Button>
+                                            </div>
+                                         ) : item.connectionStatus === "REJECTED_RECENT" ? (
+                                            <Button disabled className="rounded-xl h-11 px-6 bg-rose-50 text-rose-600 font-bold text-xs uppercase tracking-widest border border-rose-100 italic">
+                                                Rejected
+                                            </Button>
+                                         ) : (
+                                            <Button 
+                                                onClick={() => handleConnect(item.id)}
+                                                disabled={connectingId === item.id || item.connectionStatus === "PENDING"}
+                                                className="rounded-xl h-11 px-6 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest hover:bg-primary transition-all shadow-lg shadow-slate-200/50 disabled:opacity-50"
+                                            >
+                                                {connectingId === item.id ? (
+                                                    <Loader2 className="animate-spin h-4 w-4" />
+                                                ) : (
+                                                    item.connectionStatus === "PENDING" ? "Pending" : "Connect"
+                                                )}
+                                            </Button>
+                                         )}
                                     </div>
                                 </CardContent>
                             </Card>

@@ -91,3 +91,22 @@ export const getInvestorAnalytics = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+// @desc    Track UI Render Counts (Lead Intelligence Monitoring)
+// @route   POST /api/analytics/ui-count
+export const trackUiCount = async (req, res) => {
+    try {
+        const { type, totalFetched, totalRendered, role } = req.body;
+
+        console.log("\n=========== UI RENDER COUNT ===========");
+        console.log(`Type:     ${type}`);
+        console.log(`Role:     ${role}`);
+        console.log(`Fetched:  ${totalFetched}`);
+        console.log(`Rendered: ${totalRendered}`);
+        console.log("=======================================");
+
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("UI Analytics error:", error.message);
+        res.status(500).json({ success: false });
+    }
+};

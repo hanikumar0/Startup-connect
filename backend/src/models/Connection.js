@@ -17,8 +17,19 @@ const connectionSchema = new mongoose.Schema(
             enum: ["PENDING", "ACCEPTED", "REJECTED"],
             default: "PENDING",
         },
+        requestedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
         message: {
             type: String,
+        },
+        acceptedAt: {
+            type: Date,
+        },
+        rejectedAt: {
+            type: Date,
         },
     },
     { timestamps: true }

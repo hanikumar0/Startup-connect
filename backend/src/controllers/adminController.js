@@ -199,8 +199,8 @@ export const moderateStartup = async (req, res) => {
         // Logic for notifications
         if (status === 'approved') {
             await Notification.create({
-                recipient: startup.userId,
-                type: "SYSTEM",
+                userId: startup.userId,
+                type: "system_alert",
                 title: "Profile Approved!",
                 message: "Your startup profile has been approved and is now live."
             });
@@ -244,8 +244,8 @@ export const moderateInvestor = async (req, res) => {
 
         if (status === 'approved') {
             await Notification.create({
-                recipient: investor.userId,
-                type: "SYSTEM",
+                userId: investor.userId,
+                type: "system_alert",
                 title: "Profile Approved!",
                 message: "Your investor profile has been approved and is now live."
             });

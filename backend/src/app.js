@@ -33,9 +33,11 @@ import dealRoutes from "./routes/dealRoutes.js";
 import pitchRoutes from "./routes/pitchRoutes.js";
 import outreachRoutes from "./routes/outreachRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import debugRoutes from "./routes/debugRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import importRoutes from "./routes/importRoutes.js";
 import externalRoutes from "./routes/externalRoutes.js";
+import ingestionRoutes from "./routes/ingestionRoutes.js";
 import passport from "./config/passport.js";
 import mongoose from "mongoose";
 import AppError from "./utils/AppError.js";
@@ -142,9 +144,11 @@ app.use("/api/deals", dealRoutes);
 app.use("/api/pitch", pitchRoutes);
 app.use("/api/outreach", outreachRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/debug", debugRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/import", importRoutes);
 app.use("/api/external", externalRoutes);
+app.use("/api/ingestion", ingestionRoutes);
 
 // Error Handling
 app.all("*", (req, res, next) => {

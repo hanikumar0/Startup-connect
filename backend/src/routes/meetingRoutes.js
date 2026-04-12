@@ -1,10 +1,8 @@
 import express from "express";
 import { 
-    requestMeeting, 
-    acceptMeeting, 
-    rejectMeeting, 
+    scheduleMeeting, 
     getMyMeetings, 
-    cancelMeeting 
+    respondToMeeting 
 } from "../controllers/meetingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -12,10 +10,8 @@ const router = express.Router();
 
 router.use(protect);
 
-router.post("/request", requestMeeting);
-router.get("/", getMyMeetings);
-router.put("/accept/:id", acceptMeeting);
-router.put("/reject/:id", rejectMeeting);
-router.put("/cancel/:id", cancelMeeting);
+router.post("/schedule", scheduleMeeting);
+router.get("/my-meetings", getMyMeetings);
+router.put("/:id/respond", respondToMeeting);
 
 export default router;

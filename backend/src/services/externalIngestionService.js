@@ -1,14 +1,26 @@
 import axios from "axios";
+import fs from "fs";
+import path from "path";
+import csvParser from "csv-parser";
 import ExternalProfile from "../models/ExternalProfile.js";
 import dotenv from "dotenv";
+
 dotenv.config();
+
+// STEP 2 — CREATE DYNAMIC STATS OBJECT (Fix Requirement)
+export const ingestionStats = {
+    productHunt: 0,
+    github: 0,
+    investors_raw: 0,
+    logo: 0,
+    total: 0
+};
 
 /**
  * Fetch top startups from Product Hunt
  */
 export const fetchProductHunt = async () => {
-    let phCount = 0;
-    let logoCount = 0;
+    let phBatch = 0;
     try {
         const query = `
         {
@@ -19,20 +31,10 @@ export const fetchProductHunt = async () => {
                 name
                 tagline
                 website
-                makers {
-                  name
-                }
-                topics {
-                  edges {
-                    node {
-                      name
-                    }
-                  }
-                }
+                makers { name }
+                topics { edges { node { name } } }
                 createdAt
-                thumbnail {
-                  url
-                }
+                thumbnail { url }
               }
             }
           }
@@ -49,12 +51,11 @@ export const fetchProductHunt = async () => {
             }
         );
 
-        if (response.data?.errors) {
-            console.error("PH GraphQL Errors:", response.data.errors);
-        }
-
         const posts = response.data?.data?.posts?.edges || [];
-        phCount = posts.length;
+        phBatch = posts.length;
+        
+        // STEP 3 — AUTO COUNT PRODUCT HUNT
+        ingestionStats.productHunt = phBatch;
 
         for (const edge of posts) {
             const node = edge.node;
@@ -65,39 +66,35 @@ export const fetchProductHunt = async () => {
                 try {
                     const hostname = new URL(node.website).hostname;
                     logoUrl = `https://img.logo.dev/${hostname}?token=${process.env.LOGODEV_PUBLISHABLE_KEY}`;
-                    logoCount++;
-                } catch (e) {
-                    logoUrl = null; // Fallback to default avatar in UI
-                }
+                    // STEP 6 — COUNT LOGO ENRICHMENT
+                    ingestionStats.logo++;
+                } catch (e) {}
             } else if (logoUrl) {
-                logoCount++;
+                ingestionStats.logo++;
             }
 
             await ExternalProfile.findOneAndUpdate(
                 { name: node.name, source: "producthunt" },
                 {
                     name: node.name,
-                    firm: node.name,
+                    description: node.tagline || "",
                     website: node.website || "",
+                    logo: logoUrl,
+                    tags: node.topics?.edges?.map(e => e.node.name) || ["Technology"],
                     industry: node.topics?.edges?.[0]?.node?.name || "Technology",
                     source: "producthunt",
                     type: "startup",
-                    leadType: "startup",
+                    isExternal: true,
                     metadata: {
                         tagline: node.tagline,
-                        makers: node.makers ? node.makers.map(m => m.name) : [],
-                        topics: node.topics?.edges ? node.topics.edges.map(e => e.node.name) : [],
-                        launchDate: node.createdAt,
-                        logo: logoUrl
+                         makers: node.makers?.map(m => m.name)
                     }
                 },
-                { upsert: true, new: true }
+                { upsert: true }
             );
         }
-        return { phCount, logoCount };
     } catch (error) {
-        console.error("Product Hunt fetch error:", error.response?.data || error.message);
-        return { phCount: 0, logoCount: 0 };
+        console.error("PH Import Error:", error.message);
     }
 };
 
@@ -105,8 +102,6 @@ export const fetchProductHunt = async () => {
  * Fetch top startups from GitHub (trending repos)
  */
 export const fetchGitHub = async () => {
-    let ghCount = 0;
-    let logoCount = 0;
     try {
         const response = await axios.get(
             `https://api.github.com/search/repositories?q=stars:>1000&sort=stars&order=desc&per_page=20`,
@@ -119,7 +114,8 @@ export const fetchGitHub = async () => {
         );
 
         const repos = response.data?.items || [];
-        ghCount = repos.length;
+        // STEP 4 — AUTO COUNT GITHUB
+        ingestionStats.github = repos.length;
 
         for (const repo of repos) {
             let hostname = "github.com";
@@ -128,33 +124,90 @@ export const fetchGitHub = async () => {
             } catch (e) {}
 
             const logoUrl = `https://img.logo.dev/${hostname}?token=${process.env.LOGODEV_PUBLISHABLE_KEY}`;
-            logoCount++;
+            ingestionStats.logo++;
 
             await ExternalProfile.findOneAndUpdate(
                 { name: repo.name, source: "github" },
                 {
                     name: repo.name,
-                    firm: repo.owner?.login,
+                    description: repo.description || `Trending repository by ${repo.owner?.login}`,
                     website: repo.homepage || repo.html_url,
+                    logo: logoUrl,
+                    tags: [repo.language, "open-source"].filter(Boolean),
                     industry: "Software Development",
                     source: "github",
                     type: "startup",
-                    leadType: "startup",
+                    isExternal: true,
                     metadata: {
-                        description: repo.description,
                         stars: repo.stargazers_count,
-                        topics: repo.topics || [],
-                        owner: repo.owner?.login,
-                        logo: logoUrl
+                        owner: repo.owner?.login
                     }
                 },
-                { upsert: true, new: true }
+                { upsert: true }
             );
         }
-        return { ghCount, logoCount };
     } catch (error) {
-        console.error("GitHub fetch error:", error.message);
-        return { ghCount: 0, logoCount: 0 };
+        console.error("GitHub Import Error:", error.message);
+    }
+};
+
+/**
+ * STEP 5 — AUTO COUNT investors_raw.csv
+ */
+export const fetchInvestorsCSV = async () => {
+    try {
+        const csvPath = path.join(process.cwd(), "investors_raw.csv");
+        const filePath = fs.existsSync(csvPath) ? csvPath : "C:\\startup connect\\.agent\\scratch\\investors_raw.csv";
+        
+        if (!fs.existsSync(filePath)) {
+            console.log("investors_raw.csv not found, skipping CSV ingestion.");
+            return;
+        }
+
+        const results = [];
+        const stream = fs.createReadStream(filePath).pipe(csvParser());
+
+        for await (const row of stream) {
+            const name = row['Investor name'] || row['Name'] || "";
+            if (name.trim()) {
+                results.push({
+                    name: name.trim(),
+                    website: row['Website'] || "",
+                    industry: row['Industry'] || row['Focus'] || "Venture Capital"
+                });
+            }
+        }
+
+        ingestionStats.investors_raw = results.length;
+
+        for (const data of results) {
+            let logoUrl = "";
+            try {
+                if (data.website) {
+                    const domain = new URL(data.website).hostname;
+                    logoUrl = `https://img.logo.dev/${domain}?token=${process.env.LOGODEV_PUBLISHABLE_KEY}`;
+                    ingestionStats.logo++;
+                }
+            } catch (e) {}
+
+            await ExternalProfile.findOneAndUpdate(
+                { name: data.name, source: "csv" },
+                {
+                    name: data.name,
+                    description: `Institutional investor from CSV dataset. Focus: ${data.industry}`,
+                    website: data.website || "",
+                    logo: logoUrl,
+                    tags: [data.industry, "csv"].filter(Boolean),
+                    industry: data.industry,
+                    source: "csv",
+                    type: "investor",
+                    isExternal: true
+                },
+                { upsert: true }
+            );
+        }
+    } catch (error) {
+        console.error("CSV Import Error:", error.message);
     }
 };
 
@@ -164,27 +217,28 @@ export const fetchGitHub = async () => {
 export const runMasterIngestion = async () => {
     console.log("\n--- Starting Strategic Federated Ingestion ---");
     
-    const phResult = await fetchProductHunt();
-    const ghResult = await fetchGitHub();
+    // Reset logo count for fresh run
+    ingestionStats.logo = 0;
+
+    await Promise.all([
+        fetchProductHunt(),
+        fetchGitHub(),
+        fetchInvestorsCSV()
+    ]);
     
-    const logoTotalCount = phResult.logoCount + ghResult.logoCount;
-    const savedCount = await ExternalProfile.countDocuments();
+    // STEP 7 — SET TOTAL COUNT
+    ingestionStats.total = await ExternalProfile.countDocuments({ isExternal: true });
 
-    console.log(`Fetched ${phResult.phCount} posts from Product Hunt.`);
-    console.log(`Fetched ${ghResult.ghCount} repos from GitHub.`);
-    console.log(`Fetched ${logoTotalCount} logos from Logo.dev.`);
-    console.log(`Saved ${savedCount} external profiles.`);
+    // STEP 8 — BACKEND LOG OUTPUT
+    console.log("================================");
+    console.log("INGESTION SUMMARY");
+    console.log("================================");
+    console.log("Product Hunt:", ingestionStats.productHunt);
+    console.log("GitHub:", ingestionStats.github);
+    console.log("investors_raw.csv:", ingestionStats.investors_raw);
+    console.log("Logo.dev enriched:", ingestionStats.logo);
+    console.log("Total External Records:", ingestionStats.total);
+    console.log("================================");
 
-    console.log(`\nIngestion Complete:`);
-    console.log(`${phResult.phCount} PH`);
-    console.log(`${ghResult.ghCount} GitHub`);
-    console.log(`${logoTotalCount} Logo.dev entries processed.`);
-    console.log(`${savedCount} total external intelligence records available.\n`);
-
-    return { 
-        phCount: phResult.phCount, 
-        ghCount: ghResult.ghCount, 
-        logoCount: logoTotalCount,
-        savedCount
-    };
+    return ingestionStats;
 };

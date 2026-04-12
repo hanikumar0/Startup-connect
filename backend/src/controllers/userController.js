@@ -6,6 +6,7 @@ import Notification from "../models/Notification.js";
 import Connection from "../models/Connection.js";
 import Deal from "../models/Deal.js";
 import Meeting from "../models/Meeting.js";
+import Conversation from "../models/Conversation.js";
 
 export const createStartupProfile = async (req, res) => {
     try {
@@ -181,7 +182,11 @@ export const getDiscoverableProfiles = async (req, res) => {
         const receivedRequests = await Connection.find({ recipient: currentUserId });
 
         const profilesWithStatus = profiles.map(profile => {
-            const userId = profile.userId?._id?.toString();
+            const userId = profile.userId?._id?.toString() || profile.userId?.toString();
+            if (!userId) {
+                return { ...profile._doc, connectionStatus: "NONE", connectionId: null };
+            }
+
             const sent = sentRequests.find(conn => conn.recipient.toString() === userId);
             const received = receivedRequests.find(conn => conn.sender.toString() === userId);
 
@@ -223,40 +228,71 @@ export const sendConnectionRequest = async (req, res) => {
         const { recipientId, message } = req.body;
         const senderId = req.user.id;
 
-        if (recipientId === senderId) return res.status(400).json({ message: "You cannot connect with yourself" });
+        if (recipientId === senderId) return res.status(400).json({ success: false, message: "You cannot connect with yourself" });
 
-        // 1. Check if I already sent one
-        const sent = await Connection.findOne({ sender: senderId, recipient: recipientId });
-        if (sent) return res.status(400).json({ message: "Request already sent" });
+        // Check if a connection already exists
+        const existing = await Connection.findOne({
+            $or: [
+                { sender: senderId, recipient: recipientId },
+                { sender: recipientId, recipient: senderId }
+            ]
+        });
 
-        // 2. Check if they already sent me one
-        const received = await Connection.findOne({ sender: recipientId, recipient: senderId });
-        if (received) {
-            return res.status(400).json({
-                message: "You have an incoming request from this user. Please accept it in your notifications or on their profile."
-            });
+        if (existing) {
+            if (existing.status === "ACCEPTED") {
+                return res.status(400).json({ success: false, message: "You are already connected" });
+            }
+            if (existing.status === "PENDING") {
+                return res.status(400).json({ success: false, message: "Connection request is already pending" });
+            }
+            
+            // If rejected, allow resending
+            if (existing.status === "REJECTED") {
+                existing.status = "PENDING";
+                existing.requestedBy = senderId;
+                existing.message = message || "Let's connect!";
+                existing.rejectedAt = null;
+                existing.sender = senderId; // Reset sender to the one who is currently requesting
+                existing.recipient = recipientId;
+                await existing.save();
+                
+                // Create notification
+                const sender = await User.findById(senderId);
+                await Notification.create({
+                    userId: recipientId,
+                    sender: senderId,
+                    type: "match_request",
+                    title: "New Connection Request",
+                    message: `${sender.name} wants to connect with you.`,
+                    link: "/dashboard/discover"
+                });
+
+                return res.status(200).json({ success: true, message: "Request resent", connection: existing });
+            }
         }
 
         const connection = await Connection.create({
             sender: senderId,
             recipient: recipientId,
-            message
+            requestedBy: senderId,
+            message: message || "Let's connect!",
+            status: "PENDING"
         });
 
         // Create notification
         const sender = await User.findById(senderId);
         await Notification.create({
-            recipient: recipientId,
+            userId: recipientId,
             sender: senderId,
-            type: "MATCH",
+            type: "match_request",
             title: "New Connection Request",
             message: `${sender.name} wants to connect with you.`,
             link: "/dashboard/discover"
         });
 
-        res.status(201).json({ success: true, connection });
+        res.status(201).json({ success: true, message: "Connection request sent", connection });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -264,23 +300,49 @@ export const acceptConnectionRequest = async (req, res) => {
     try {
         const { connectionId } = req.params;
         const { status } = req.body; // ACCEPTED or REJECTED
+        const userId = req.user.id;
 
-        const connection = await Connection.findByIdAndUpdate(connectionId, { status }, { new: true });
+        const connection = await Connection.findById(connectionId);
+        if (!connection) return res.status(404).json({ success: false, message: "Connection not found" });
 
+        // Ensure the one responding is the recipient
+        if (connection.recipient.toString() !== userId) {
+            return res.status(403).json({ success: false, message: "You are not authorized to respond to this request" });
+        }
+
+        connection.status = status;
         if (status === "ACCEPTED") {
+            connection.acceptedAt = new Date();
+            
+            // Auto-create conversation
+            const existingConversation = await Conversation.findOne({
+                participants: { $all: [connection.sender, connection.recipient] }
+            });
+
+            if (!existingConversation) {
+                await Conversation.create({
+                    participants: [connection.sender, connection.recipient],
+                    isActive: true
+                });
+            }
+
             await Notification.create({
-                recipient: connection.sender,
-                sender: req.user.id,
-                type: "MATCH",
+                userId: connection.sender,
+                sender: userId,
+                type: "match_accepted",
                 title: "Connection Accepted",
                 message: "Your connection request has been accepted!",
                 link: "/dashboard/chat"
             });
+        } else if (status === "REJECTED") {
+            connection.rejectedAt = new Date();
         }
 
-        res.status(200).json({ success: true, connection });
+        await connection.save();
+
+        res.status(200).json({ success: true, message: `Request ${status.toLowerCase()}`, connection });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -299,8 +361,8 @@ export const submitVerification = async (req, res) => {
             setTimeout(async () => {
                 await User.findByIdAndUpdate(userId, { verificationStatus: "VERIFIED" });
                 await Notification.create({
-                    recipient: userId,
-                    type: "SYSTEM",
+                    userId,
+                    type: "identity_verified",
                     title: "Profile Verified",
                     message: "Congratulations! Your identity has been verified by the government database.",
                 });
@@ -360,25 +422,38 @@ export const getMyConnections = async (req, res) => {
                 { sender: userId, status: "ACCEPTED" },
                 { recipient: userId, status: "ACCEPTED" }
             ]
-        }).populate("sender recipient", "name email role");
+        }).populate("sender recipient", "name email role avatar");
 
-        const partnersMap = new Map();
+        const partners = [];
 
-        connections.forEach(conn => {
+        for (const conn of connections) {
             const partner = conn.sender._id.toString() === userId ? conn.recipient : conn.sender;
-            const partnerId = partner._id.toString();
+            
+            // Find conversation
+            const conversation = await Conversation.findOne({
+                participants: { $all: [userId, partner._id] }
+            });
 
-            if (!partnersMap.has(partnerId)) {
-                partnersMap.set(partnerId, {
-                    id: partner._id,
-                    name: partner.name,
-                    role: partner.role,
-                    connectionId: conn._id
-                });
-            }
+            partners.push({
+                id: partner._id,
+                name: partner.name,
+                role: partner.role,
+                avatar: partner.avatar,
+                connectionId: conn._id,
+                conversationId: conversation?._id || null,
+                lastMessage: conversation?.lastMessage || null,
+                connectedAt: conn.acceptedAt || conn.updatedAt
+            });
+        }
+
+        // Sort by last message time or connection date
+        partners.sort((a, b) => {
+            const timeA = a.lastMessage?.at || a.connectedAt;
+            const timeB = b.lastMessage?.at || b.connectedAt;
+            return new Date(timeB) - new Date(timeA);
         });
 
-        res.status(200).json({ success: true, connections: Array.from(partnersMap.values()) });
+        res.status(200).json({ success: true, connections: partners });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { io, Socket } from "socket.io-client";
+import { useRouter } from "next/navigation";
+import { getSocket } from "@/lib/socket";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, User as UserIcon, Building, Search, MessageSquare, Loader2, Check, CheckCheck } from "lucide-react";
+import { Send, Search, MessageSquare, Loader2, Check, CheckCheck, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 
 interface Message {
@@ -22,10 +24,17 @@ interface Connection {
     id: string;
     name: string;
     role: string;
+    avatar?: string;
     connectionId: string;
+    conversationId?: string;
+    lastMessage?: {
+        text: string;
+        at: string;
+    };
 }
 
 export default function ChatPage() {
+    const router = useRouter();
     const [user, setUser] = useState<any>(null);
     const [connections, setConnections] = useState<Connection[]>([]);
     const [selectedPartner, setSelectedPartner] = useState<Connection | null>(null);
@@ -33,78 +42,63 @@ export default function ChatPage() {
     const [inputText, setInputText] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [partnerTyping, setPartnerTyping] = useState(false);
-    const socketRef = useRef<Socket | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    const getConversationId = (id1: string, id2: string) => [id1, id2].sort().join("_");
+    const typingTimeoutRef = useRef<NodeJS.Timeout| null>(null);
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
             const parsedUser = JSON.parse(storedUser);
-            // Add unique ID for the user if not present (using stored data)
             setUser(parsedUser);
             fetchConnections();
         }
     }, []);
 
+    const socket = getSocket();
+
     useEffect(() => {
-        if (!user) return;
-
-        // Connect to backend
-        socketRef.current = io(process.env.NEXT_PUBLIC_API_URL || "");
-
-        // Listen for incoming messages
-        socketRef.current.on("receive_message", (message: Message) => {
-            if (selectedPartner && message.conversationId === getConversationId(user.id, selectedPartner.id)) {
+        if (!user || !socket) return;
+        const receiveMessageHandler = (message: Message) => {
+            if (selectedPartner && message.conversationId === selectedPartner.conversationId) {
                 setMessages((prev) => [...prev, message]);
-                // Automatically mark as read if we are in the chat
-                socketRef.current?.emit("mark_messages_read", {
+                socket.emit("mark_messages_read", {
                     conversationId: message.conversationId,
                     userId: user.id
                 });
             }
-        });
-
-        // Listen for read status updates
-        socketRef.current.on("messages_marked_read", ({ conversationId }: { conversationId: string }) => {
-            if (selectedPartner && conversationId === getConversationId(user.id, selectedPartner.id)) {
+        };
+        const readHandler = ({ conversationId }: { conversationId: string }) => {
+            if (selectedPartner && conversationId === selectedPartner.conversationId) {
                 setMessages((prev) => prev.map(m => ({ ...m, isRead: true })));
             }
-        });
-
-        // Listen for typing events
-        socketRef.current.on("user_typing", ({ userId }: { userId: string }) => {
-            if (selectedPartner && userId === selectedPartner.id) {
-                setPartnerTyping(true);
-            }
-        });
-
-        socketRef.current.on("user_stop_typing", ({ userId }: { userId: string }) => {
-            if (selectedPartner && userId === selectedPartner.id) {
-                setPartnerTyping(false);
-            }
-        });
-
-        return () => {
-            socketRef.current?.disconnect();
         };
-    }, [user, selectedPartner]);
+        const typingHandler = ({ senderId, isTyping }: { senderId: string, isTyping: boolean }) => {
+            if (selectedPartner && senderId === selectedPartner.id) {
+                setPartnerTyping(isTyping);
+            }
+        };
+        socket.on("receive_message", receiveMessageHandler);
+        socket.on("messages_marked_read", readHandler);
+        socket.on("user_typing", typingHandler);
+        return () => {
+            socket.off("receive_message", receiveMessageHandler);
+            socket.off("messages_marked_read", readHandler);
+            socket.off("user_typing", typingHandler);
+        };
+    }, [user, selectedPartner, socket]);
 
     useEffect(() => {
-        if (selectedPartner && user) {
+        if (selectedPartner?.conversationId && user && socket) {
             setPartnerTyping(false);
-            const convId = getConversationId(user.id, selectedPartner.id);
-            socketRef.current?.emit("join_room", convId);
+            const convId = selectedPartner.conversationId;
+            socket.emit("join_conversation", convId);
             fetchMessages(convId);
-            // Mark existing messages as read
-            socketRef.current?.emit("mark_messages_read", {
+            socket.emit("mark_messages_read", {
                 conversationId: convId,
                 userId: user.id
             });
         }
-    }, [selectedPartner]);
+    }, [selectedPartner, user, socket]);
 
     const fetchConnections = async () => {
         try {
@@ -116,192 +110,179 @@ export default function ChatPage() {
                     setSelectedPartner(data.connections[0]);
                 }
             }
-        } catch (error) {
-            console.error("Error fetching connections:", error);
-        } finally {
-            setIsLoading(false);
-        }
+        } catch (error) {} finally { setIsLoading(false); }
     };
 
     const fetchMessages = async (convId: string) => {
         try {
             const response = await apiFetch(`/api/chat/messages/${convId}`);
             const data = await response.json();
-            if (data.success) {
-                setMessages(data.messages);
-            }
-        } catch (error) {
-            console.error("Error fetching messages:", error);
-        }
+            if (data.success) setMessages(data.messages);
+        } catch (error) {}
     };
 
     const handleSendMessage = (e: FormEvent) => {
         e.preventDefault();
-        if (!inputText.trim() || !socketRef.current || !selectedPartner || !user) return;
-
-        const convId = getConversationId(user.id, selectedPartner.id);
+        if (!inputText.trim() || !socket || !selectedPartner?.conversationId || !user) return;
+        const convId = selectedPartner.conversationId;
         const messageData = {
             conversationId: convId,
             senderId: user.id,
             receiverId: selectedPartner.id,
             text: inputText,
         };
-
-        socketRef.current.emit("send_message", messageData);
-        socketRef.current.emit("stop_typing", { conversationId: convId, userId: user.id });
+        socket.emit("send_message", messageData);
+        socket.emit("stop_typing", { conversationId: convId, userId: user.id });
         setInputText("");
     };
 
     const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
         setInputText(e.target.value);
-        if (!socketRef.current || !selectedPartner || !user) return;
-
-        const convId = getConversationId(user.id, selectedPartner.id);
-        socketRef.current.emit("typing", { conversationId: convId, userId: user.id });
-
+        if (!socket || !selectedPartner?.conversationId || !user) return;
+        const convId = selectedPartner.conversationId;
+        socket.emit("typing", { conversationId: convId, isTyping: true });
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => {
-            socketRef.current?.emit("stop_typing", { conversationId: convId, userId: user.id });
+            socket.emit("typing", { conversationId: convId, isTyping: false });
         }, 2000);
     };
 
     useEffect(() => {
         if (scrollRef.current) {
             const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) {
-                viewport.scrollTop = viewport.scrollHeight;
-            }
+            if (viewport) viewport.scrollTop = viewport.scrollHeight;
         }
     }, [messages]);
 
-    if (isLoading) {
-        return (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            </div>
-        );
-    }
+    if (isLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-indigo-600" /></div>;
 
     return (
-        <div className="flex h-[calc(100vh-120px)] gap-6 animate-in fade-in duration-500">
-            {/* Conversations Sidebar */}
-            <Card className="w-80 flex flex-col border-none shadow-sm bg-white overflow-hidden">
-                <CardHeader className="p-4 border-b">
-                    <CardTitle className="text-lg font-bold">Messages</CardTitle>
-                    <div className="relative mt-2">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                        <Input placeholder="Search chats..." className="pl-9 h-9 text-xs bg-slate-50 border-none outline-none focus-visible:ring-1 focus-visible:ring-indigo-500" />
-                    </div>
-                </CardHeader>
-                <ScrollArea className="flex-1">
-                    <div className="p-2 space-y-1">
-                        {connections.length > 0 ? connections.map((conn) => (
-                            <div
-                                key={conn.connectionId}
-                                onClick={() => setSelectedPartner(conn)}
-                                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedPartner?.id === conn.id ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'}`}
-                            >
-                                <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold ${selectedPartner?.id === conn.id ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    {conn.name.charAt(0)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold truncate">{conn.name}</p>
-                                    <p className="text-[10px] uppercase tracking-wider font-semibold opacity-60 font-mono mt-0.5">{conn.role}</p>
-                                </div>
-                            </div>
-                        )) : (
-                            <div className="p-8 text-center">
-                                <MessageSquare className="h-8 w-8 text-slate-200 mx-auto mb-3" />
-                                <p className="text-xs text-slate-400 font-medium leading-relaxed">No connections yet. Discover people to start chatting!</p>
-                            </div>
-                        )}
-                    </div>
-                </ScrollArea>
-            </Card>
+        <div className="space-y-4 h-[calc(100vh-220px)] flex flex-col">
+            {/* Header Toolbar */}
+            <div className="flex items-center justify-between py-1 border-b border-slate-50 shrink-0">
+               <div className="flex items-center gap-4">
+                  <h2 className="text-sm font-black text-slate-900 tracking-tight">Direct Messaging</h2>
+                  <div className="flex items-center gap-1.5">
+                     <span className="text-[8px] font-black uppercase text-slate-400">Total Chats:</span>
+                     <span className="text-[11px] font-black text-slate-700">{connections.length}</span>
+                  </div>
+               </div>
+            </div>
 
-            {/* Chat Content */}
-            <Card className="flex-1 flex flex-col overflow-hidden border-none shadow-xl bg-white">
-                {selectedPartner ? (
-                    <>
-                        <CardHeader className="border-b bg-white px-6 py-4">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold">
-                                    {selectedPartner.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <CardTitle className="text-lg font-bold text-slate-900">{selectedPartner.name}</CardTitle>
-                                    <p className="text-xs text-green-500 font-bold uppercase tracking-wider">Online</p>
-                                </div>
-                            </div>
-                        </CardHeader>
-
-                        <ScrollArea className="flex-1 p-6" ref={scrollRef}>
-                            <div className="space-y-4">
-                                {messages.length === 0 && (
-                                    <div className="text-center text-slate-300 py-20 italic text-sm">
-                                        Start your encrypted conversation with {selectedPartner.name}.
+            <div className="flex-1 flex gap-4 min-h-0">
+                {/* Conversations Sidebar */}
+                <Card className="w-72 flex flex-col border-slate-100 shadow-sm bg-white rounded-xl overflow-hidden shrink-0">
+                    <CardHeader className="p-3 border-b border-slate-50">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                            <Input placeholder="Filter chats..." className="pl-9 h-8 text-[10px] bg-slate-50 border-none rounded-lg font-bold" />
+                        </div>
+                    </CardHeader>
+                    <ScrollArea className="flex-1">
+                        <div className="divide-y divide-slate-50">
+                            {connections.map((conn) => (
+                                <div
+                                    key={conn.connectionId}
+                                    onClick={() => setSelectedPartner(conn)}
+                                    className={`flex items-center gap-2.5 p-3 cursor-pointer transition-all ${selectedPartner?.id === conn.id ? 'bg-indigo-50 border-r-2 border-indigo-600' : 'hover:bg-slate-50'}`}
+                                >
+                                    <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs relative border border-slate-100 shrink-0 shadow-inner">
+                                        {conn.avatar ? <img src={conn.avatar} className="w-full h-full object-cover rounded-lg" /> : conn.name.charAt(0)}
+                                        <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm"></div>
                                     </div>
-                                )}
-                                {messages.map((msg, index) => {
-                                    const isMine = msg.senderId === user.id;
-                                    return (
-                                        <div key={index} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                                            <div className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-sm ${isMine
-                                                ? "bg-indigo-600 text-white rounded-tr-none shadow-indigo-100"
-                                                : "bg-slate-100 text-slate-900 rounded-tl-none shadow-slate-50"
-                                                }`}>
-                                                <p className="text-sm">{msg.text}</p>
-                                                <div className={`mt-1 text-[10px] opacity-70 flex items-center justify-end gap-1 ${isMine ? "text-white" : "text-slate-400"}`}>
-                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    {isMine && (
-                                                        msg.isRead ? (
-                                                            <CheckCheck className="h-3 w-3 text-white" />
-                                                        ) : (
-                                                            <Check className="h-3 w-3 text-white/60" />
-                                                        )
-                                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[11px] font-black text-slate-900 truncate leading-tight">{conn.name}</p>
+                                        <p className="text-[8px] font-bold text-slate-400 truncate mt-0.5 italic">
+                                            {conn.lastMessage ? conn.lastMessage.text : "No messages yet"}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </Card>
+
+                {/* Main Chat Area - Fixed Height and Robust Flex */}
+                <Card className="flex-1 flex flex-col min-w-0 border-slate-100 shadow-sm bg-white rounded-xl overflow-hidden">
+                    {selectedPartner ? (
+                        <div className="flex flex-col h-full"> {/* Inner flex container */}
+                            <CardHeader className="border-b border-slate-50 bg-white px-5 py-3 shrink-0">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-9 w-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-black border border-indigo-100 relative shadow-inner">
+                                            {selectedPartner.avatar ? <img src={selectedPartner.avatar} className="w-full h-full object-cover rounded-lg" /> : selectedPartner.name.charAt(0)}
+                                            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm"></span>
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] font-black text-slate-900 leading-tight">{selectedPartner.name}</p>
+                                            <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mt-0.5 italic">{selectedPartner.role}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" className="h-7 rounded-md text-[8px] font-black uppercase tracking-widest border-slate-100 px-3 text-slate-400 hover:text-indigo-600 transition-colors">Profile</Button>
+                                        <Button variant="outline" className="h-7 rounded-md text-[8px] font-black uppercase tracking-widest border-slate-100 px-3 text-slate-400 hover:text-indigo-600 transition-colors">Meetings</Button>
+                                    </div>
+                                </div>
+                            </CardHeader>
+
+                            <div className="flex-1 min-h-0 relative bg-slate-50/10">  {/* Scroll container wrapper */}
+                                <ScrollArea className="h-full w-full" ref={scrollRef}>
+                                    <div className="p-5 space-y-4">
+                                        {messages.map((msg, index) => {
+                                            const isMine = msg.senderId === user.id;
+                                            return (
+                                                <div key={index} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                                                    <div className={`max-w-[80%] rounded-xl px-4 py-2 shadow-sm relative group ${isMine
+                                                        ? "bg-slate-900 text-white rounded-tr-none"
+                                                        : "bg-white text-slate-900 rounded-tl-none border border-slate-100"
+                                                        }`}>
+                                                        <p className="text-[11px] font-bold leading-relaxed">{msg.text}</p>
+                                                        <div className={`mt-1 text-[7px] font-black uppercase tracking-widest flex items-center justify-end gap-1.5 ${isMine ? "text-white/40" : "text-slate-300"}`}>
+                                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            {isMine && (msg.isRead ? <CheckCheck size={9} /> : <Check size={9} />)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {partnerTyping && (
+                                            <div className="flex justify-start">
+                                                <div className="bg-white border border-slate-100 rounded-lg px-2.5 py-1 shadow-sm">
+                                                    <span className="text-[7.5px] font-black text-indigo-400 uppercase tracking-widest animate-pulse italic">Partner is typing...</span>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                                {partnerTyping && (
-                                    <div className="flex justify-start animate-in fade-in duration-300">
-                                        <div className="bg-slate-100 text-slate-500 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1.5">
-                                            <div className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                                            <div className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                                            <div className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                                        </div>
+                                        )}
                                     </div>
-                                )}
+                                </ScrollArea>
                             </div>
-                        </ScrollArea>
 
-                        <CardFooter className="border-t bg-slate-50/50 p-4">
-                            <form onSubmit={handleSendMessage} className="flex w-full items-center gap-3">
-                                <Input
-                                    placeholder="Type your message..."
-                                    value={inputText}
-                                    onChange={handleTyping}
-                                    className="h-12 border-slate-200 bg-white shadow-sm focus-visible:ring-indigo-500"
-                                />
-                                <Button type="submit" size="icon" className="h-12 w-12 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 shrink-0">
-                                    <Send className="h-5 w-5" />
-                                </Button>
-                            </form>
-                        </CardFooter>
-                    </>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
-                        <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-                            <MessageSquare className="h-10 w-10 text-slate-200" />
+                            <CardFooter className="border-t border-slate-50 bg-white p-3 shrink-0">
+                                <form onSubmit={handleSendMessage} className="flex w-full items-center gap-2">
+                                    <div className="flex-1 relative">
+                                       <Input
+                                          placeholder="Type message..."
+                                          value={inputText}
+                                          onChange={handleTyping}
+                                          className="h-9 pl-3 pr-10 bg-slate-50 border-none rounded-lg text-[10px] font-bold shadow-inner"
+                                       />
+                                    </div>
+                                    <Button type="submit" size="icon" className="h-9 w-9 bg-indigo-600 hover:bg-slate-900 text-white rounded-lg shadow-sm shrink-0 transition-all">
+                                        <Send size={14} />
+                                    </Button>
+                                </form>
+                            </CardFooter>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">Select a Conversation</h3>
-                        <p className="max-w-xs text-sm font-medium leading-relaxed">Choose an active connection from the left to start formal discussions or pitch reviews.</p>
-                    </div>
-                )}
-            </Card>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/5">
+                            <div className="h-12 w-12 bg-white rounded-xl shadow-sm border border-slate-50 flex items-center justify-center mb-4 transition-all hover:scale-105">
+                                <MessageSquare className="h-6 w-6 text-slate-200" />
+                            </div>
+                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Select Thread</h3>
+                            <p className="max-w-xs text-[10px] text-slate-400 font-bold mt-1 opacity-70 italic">Pick a connection to view conversation history.</p>
+                        </div>
+                    )}
+                </Card>
+            </div>
         </div>
     );
 }
-

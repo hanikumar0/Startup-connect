@@ -56,6 +56,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   const handleLogout = () => {
+    const { disconnectSocket } = require("@/lib/socket");
+    disconnectSocket();
     logout();
     toast.success("Admin logged out");
     router.push("/login");
