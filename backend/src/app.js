@@ -38,6 +38,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import importRoutes from "./routes/importRoutes.js";
 import externalRoutes from "./routes/externalRoutes.js";
 import ingestionRoutes from "./routes/ingestionRoutes.js";
+import networkRoutes from "./routes/networkRoutes.js";
 import passport from "./config/passport.js";
 import mongoose from "mongoose";
 import AppError from "./utils/AppError.js";
@@ -109,8 +110,8 @@ const authLimiter = rateLimit({
 app.use("/api", apiLimiter);
 
 // Body Parsing
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(hpp());
 app.use(mongoSanitize());
 app.use(xss());
@@ -130,6 +131,7 @@ app.use("/api/save", saveRoutes);
 app.use("/api/match", matchRoutes);
 app.use("/api/connections", connectionRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/message", messageRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/claim", claimRoutes);
 app.use("/api/users", userRoutes);
@@ -149,6 +151,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/import", importRoutes);
 app.use("/api/external", externalRoutes);
 app.use("/api/ingestion", ingestionRoutes);
+app.use("/api/network", networkRoutes);
 
 // Error Handling
 app.all("*", (req, res, next) => {
@@ -187,10 +190,10 @@ app.use((err, req, res, next) => {
 // --- Strategic Data Ingestion Pipelines ---
 // CRON_IMPORT = 0 */12 * * * (Every 12 hours)
 cron.schedule("0 */12 * * *", () => {
-    runMasterIngestion();
+    runMasterIngestion().catch(err => logger.error({ err }, "Cron: Master Ingestion failed"));
 });
 
 // Immediate Background Fetch on Startup for Initial Population
-runMasterIngestion();
+runMasterIngestion().catch(err => logger.error({ err }, "Startup: Master Ingestion failed"));
 
 export default app;

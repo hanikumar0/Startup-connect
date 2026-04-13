@@ -43,7 +43,7 @@ export function clearApiCache(): void {
  */
 export async function apiFetch(
     endpoint: string,
-    options: RequestInit = {},
+    options: RequestInit & { timeout?: number } = {},
     retries: number = MAX_RETRIES
 ): Promise<Response> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -51,24 +51,38 @@ export async function apiFetch(
 
     const { token } = useAuthStore.getState();
 
+    const isFormData = options.body instanceof FormData;
+
     const headers: Record<string, string> = {
-        "Content-Type": "application/json",
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
         "bypass-tunnel-reminder": "true",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers as Record<string, string>),
     };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const abortController = new AbortController();
+    if (options.signal) {
+        options.signal.addEventListener("abort", () => abortController.abort(options.signal?.reason), { once: true });
+        if (options.signal.aborted) abortController.abort(options.signal.reason);
+    }
+    const signal = abortController.signal;
+    
+    // Configurable timeout
+    const timeoutDuration = options.timeout ?? 30000;
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    if (timeoutDuration > 0) {
+        timeoutId = setTimeout(() => abortController.abort("timeout"), timeoutDuration);
+    }
 
     try {
         const response = await fetch(url, {
             ...options,
             headers,
-            signal: controller.signal,
+            signal,
         });
 
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
 
         // Handle auth errors globally
         if (response.status === 401 && typeof window !== "undefined") {
@@ -86,27 +100,38 @@ export async function apiFetch(
 
         return response;
     } catch (err: any) {
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
 
-        // Retry on network errors (not on abort/timeout)
-        if (retries > 0 && err.name !== "AbortError") {
+        const isTimeout = err.name === "AbortError" && (err.reason === "timeout" || signal?.reason === "timeout");
+        const isAbort = err.name === "AbortError";
+
+        // Retry on network errors (not on intentional abort/timeout)
+        if (retries > 0 && !isAbort) {
             console.warn(`Retrying ${endpoint} (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})...`);
             await new Promise((r) => setTimeout(r, RETRY_DELAY * (MAX_RETRIES - retries + 1)));
             return apiFetch(endpoint, options, retries - 1);
         }
 
-        console.error(`API Error [${url}]:`, err.message || err);
+        if (isTimeout) {
+            console.error(`API Timeout [${url}]: Request took longer than 30s.`);
+        } else if (isAbort) {
+            console.warn(`API Aborted [${url}]: Signal was cancelled (Reason: ${signal?.reason || "unspecified"}).`);
+        } else {
+            console.error(`API Error [${url}]:`, err.message || err);
+        }
 
         // Return a mock Response so callers don't crash
         return new Response(
             JSON.stringify({
                 success: false,
-                message: err.name === "AbortError"
+                message: isTimeout
                     ? "Request timed out. Please try again."
-                    : "Network error. Please check your connection.",
+                    : isAbort 
+                        ? "Request was cancelled."
+                        : "Network error. Please check your connection.",
             }),
             {
-                status: err.name === "AbortError" ? 408 : 503,
+                status: isTimeout ? 408 : isAbort ? 499 : 503,
                 headers: { "Content-Type": "application/json" },
             }
         );
@@ -120,7 +145,7 @@ export async function apiFetch(
  */
 export async function apiFetchJSON<T = any>(
     endpoint: string,
-    options: RequestInit = {},
+    options: RequestInit & { timeout?: number } = {},
     defaultValue: T = { success: false } as T,
     useCache: boolean = false
 ): Promise<T> {

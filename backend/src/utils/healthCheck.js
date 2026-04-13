@@ -159,6 +159,22 @@ const runServiceHealthCheck = async () => {
                 return { name: "Logo.dev API", status: "fail", error: e.response?.status === 401 ? "Invalid Key" : "Unreachable" };
             }
         })(),
+
+        // 12. Cloudinary API
+        (async () => {
+            try {
+                const { v2: cloudinary } = await import("cloudinary");
+                cloudinary.config({
+                    cloud_name: process.env.CLOUD_NAME,
+                    api_key: process.env.API_KEY,
+                    api_secret: process.env.API_SECRET,
+                });
+                await cloudinary.api.ping();
+                return { name: "Cloudinary API", status: "ok" };
+            } catch (e) {
+                return { name: "Cloudinary API", status: "fail", error: "Auth failed / Unreachable" };
+            }
+        })(),
     ];
 
     const results = await Promise.all(checks);

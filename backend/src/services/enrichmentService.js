@@ -30,10 +30,14 @@ class EnrichmentService {
      * Enrich data using Microlink
      */
     async enrichMetadata(url) {
-        if (!url) return null;
+        if (!url || !url.startsWith("http")) return null;
         try {
-            const response = await axios.get(`${this.microlinkApi}?url=${encodeURIComponent(url)}`);
-            const { data } = response.data;
+            const response = await axios.get(`${this.microlinkApi}?url=${encodeURIComponent(url)}`, {
+                timeout: 5000,
+                headers: { "user-agent": "StartupConnect/1.0" }
+            });
+            const data = response.data?.data;
+            if (!data) return null;
             
             return {
                 description: data.description,
@@ -43,7 +47,10 @@ class EnrichmentService {
                 lang: data.lang
             };
         } catch (error) {
-            console.error(`Error enriching metadata for ${url}:`, error.message);
+            // Silently handle 400/404/429 for a cleaner log, but log critical timeouts
+            if (error.code === 'ECONNABORTED' || error.response?.status >= 500) {
+                console.error(`[Metadata Enrichment] Warning for ${url}:`, error.message);
+            }
             return null;
         }
     }

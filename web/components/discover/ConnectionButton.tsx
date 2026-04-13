@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, Clock, ArrowUpRight, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface ConnectionButtonProps {
     status: "NONE" | "PENDING" | "ACCEPTED" | "REJECTED" | "RECEIVED_PENDING" | "REJECTED_RECENT";
@@ -12,6 +13,7 @@ interface ConnectionButtonProps {
     onReject: () => void;
     isLoading: boolean;
     className?: string;
+    conversationId?: string;
 }
 
 export const ConnectionButton: React.FC<ConnectionButtonProps> = ({
@@ -20,12 +22,13 @@ export const ConnectionButton: React.FC<ConnectionButtonProps> = ({
     onAccept,
     onReject,
     isLoading,
-    className
+    className,
+    conversationId
 }) => {
     // If loading, show a disabled state with a loader
     if (isLoading) {
         return (
-            <Button disabled className={cn("flex-1 h-11 h-11 bg-indigo-600/50 text-white gap-2 font-black text-[10px] uppercase tracking-widest italic shadow-lg", className)}>
+            <Button disabled className={cn("flex-1 h-11 bg-indigo-600/50 text-white gap-2 font-black text-[10px] uppercase tracking-widest italic shadow-lg", className)}>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Processing...
             </Button>
@@ -37,27 +40,25 @@ export const ConnectionButton: React.FC<ConnectionButtonProps> = ({
         case "ACCEPTED":
             return (
                 <Button 
-                    disabled 
-                    variant="outline" 
-                    className={cn("flex-1 h-11 bg-emerald-50 text-emerald-700 border-emerald-100 gap-2 font-black text-[10px] uppercase tracking-widest italic shadow-sm", className)}
+                    asChild
+                    className={cn("flex-1 h-11 bg-slate-900 hover:bg-black text-white gap-2 font-black text-[10px] uppercase tracking-widest italic shadow-xl shadow-slate-200", className)}
                 >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Connected
+                    <Link href={`/dashboard/chat?id=${conversationId || ''}`}>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Message
+                    </Link>
                 </Button>
             );
 
         case "PENDING":
             return (
-                <div className={cn("flex flex-col flex-1 gap-1", className)}>
-                    <Button 
-                        disabled 
-                        className="w-full h-11 bg-slate-100 text-slate-400 gap-2 border-none font-black text-[10px] uppercase tracking-widest italic"
-                    >
-                        <Clock className="h-4 w-4" />
-                        Pending
-                    </Button>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center mt-1">Request Sent</span>
-                </div>
+                <Button 
+                    disabled 
+                    className={cn("flex-1 h-11 bg-slate-100 text-slate-400 gap-2 border-none font-black text-[10px] uppercase tracking-widest italic", className)}
+                >
+                    <Clock className="h-4 w-4" />
+                    Pending
+                </Button>
             );
 
         case "RECEIVED_PENDING":
@@ -80,18 +81,18 @@ export const ConnectionButton: React.FC<ConnectionButtonProps> = ({
             );
 
         case "REJECTED_RECENT":
+        case "REJECTED":
             return (
                 <Button 
                     disabled 
                     className={cn("flex-1 h-11 bg-rose-50 text-rose-600 border border-rose-100 gap-2 font-black text-[10px] uppercase tracking-widest italic", className)}
                 >
                     <XCircle className="h-4 w-4" />
-                    Declined
+                    Rejected
                 </Button>
             );
 
         case "NONE":
-        case "REJECTED":
         default:
             return (
                 <Button

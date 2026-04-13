@@ -20,22 +20,64 @@ const messageSchema = new mongoose.Schema(
                 fileName: String,
                 fileUrl: String,
                 fileType: String,
+                resourceType: String,
+                fileSize: Number,
             },
         ],
         messageType: {
             type: String,
-            enum: ["text", "file", "pitch", "meeting"],
+            enum: ["text", "image", "file", "pitch", "meeting", "link"],
             default: "text",
+        },
+        fileUrl: String,
+        fileName: String,
+        fileSize: Number,
+        fileType: String,
+        resourceType: String,
+        meetingInfo: {
+            meetingId: mongoose.Schema.Types.ObjectId,
+            title: String,
+            startTime: Date,
+            status: String,
         },
         isRead: {
             type: Boolean,
             default: false,
         },
+        isEdited: {
+            type: Boolean,
+            default: false,
+        },
+        isDeletedForBoth: {
+            type: Boolean,
+            default: false,
+        },
+        deletedFor: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+            },
+        ],
+        reactions: [
+            {
+                userId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "User",
+                },
+                emoji: String,
+            },
+        ],
+        isForwarded: {
+            type: Boolean,
+            default: false,
+        },
+        replyTo: {
+            messageId: mongoose.Schema.Types.ObjectId,
+            text: String,
+            senderName: String,
+        },
     },
     { timestamps: true }
 );
-
-// Index to find messages for a conversation sorted by time
-messageSchema.index({ conversationId: 1, createdAt: -1 });
 
 export default mongoose.model("Message", messageSchema);

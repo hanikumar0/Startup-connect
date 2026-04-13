@@ -1,6 +1,5 @@
 import Startup from "../models/Startup.js";
 import User from "../models/User.js";
-import { uploadToS3 } from "../utils/s3.js";
 
 // @desc    Create a new startup profile
 // @route   POST /api/startup/create
@@ -89,8 +88,8 @@ export const uploadLogo = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ success: false, message: "No file uploaded" });
         }
-        const result = await uploadToS3(req.file, "logos");
-        res.status(200).json({ success: true, url: result.url });
+        // With Cloudinary multer-storage, URL is in req.file.path
+        res.status(200).json({ success: true, url: req.file.path });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -103,8 +102,8 @@ export const uploadPitch = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ success: false, message: "No file uploaded" });
         }
-        const result = await uploadToS3(req.file, "pitch-decks");
-        res.status(200).json({ success: true, url: result.url });
+        // With Cloudinary multer-storage, URL is in req.file.path
+        res.status(200).json({ success: true, url: req.file.path });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

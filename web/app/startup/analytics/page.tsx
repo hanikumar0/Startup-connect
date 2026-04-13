@@ -32,8 +32,10 @@ export default function StartupAnalyticsPage() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [days, setDays] = useState(30);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        setIsMounted(true);
         const fetch = async () => {
             setLoading(true);
             const res = await apiFetchJSON(`/api/analytics/startup?days=${days}`);
@@ -109,26 +111,30 @@ export default function StartupAnalyticsPage() {
                             </div>
                             <Badge className="bg-white/20 text-white rounded-full font-black text-[10px] tracking-widest px-5 border-none backdrop-blur-md">REAL-TIME TELEMETRY</Badge>
                          </div>
-                         <div className="h-[400px]">
-                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
-                                <AreaChart data={data.trend}>
-                                    <defs>
-                                        <linearGradient id="startupViz" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#fff" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#fff" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                                    <XAxis dataKey="_id" axisLine={false} tickLine={false} tick={{fill: '#c7d2fe', fontSize: 10, fontWeight: 900}} dy={20} />
-                                    <YAxis axisLine={false} tickLine={false} hide />
-                                    <Tooltip 
-                                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)', background: '#1e1b4b', color: '#fff' }} 
-                                      itemStyle={{ color: '#818cf8', fontWeight: 900, textTransform: 'uppercase', fontSize: '10px' }}
-                                    />
-                                    <Area type="monotone" dataKey="views" stroke="#fff" strokeWidth={5} fill="url(#startupViz)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                         </div>
+                          <div className="h-[400px]">
+                            {isMounted ? (
+                                <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                                    <AreaChart data={data.trend}>
+                                        <defs>
+                                            <linearGradient id="startupViz" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#fff" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#fff" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                        <XAxis dataKey="_id" axisLine={false} tickLine={false} tick={{fill: '#c7d2fe', fontSize: 10, fontWeight: 900}} dy={20} />
+                                        <YAxis axisLine={false} tickLine={false} hide />
+                                        <Tooltip 
+                                          contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)', background: '#1e1b4b', color: '#fff' }} 
+                                          itemStyle={{ color: '#818cf8', fontWeight: 900, textTransform: 'uppercase', fontSize: '10px' }}
+                                        />
+                                        <Area type="monotone" dataKey="views" stroke="#fff" strokeWidth={5} fill="url(#startupViz)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="w-full h-full bg-white/5 animate-pulse rounded-[2rem]" />
+                            )}
+                          </div>
                     </div>
                     <div className="absolute -right-20 -bottom-20 opacity-5 transform scale-[2] rotate-12 -z-0">
                         <BarChart3 size={400} />

@@ -1,6 +1,6 @@
 import Startup from "../models/Startup.js";
 import Investor from "../models/Investor.js";
-import Notification from "../models/Notification.js";
+import { createNotification } from "../services/notificationService.js";
 import User from "../models/User.js";
 
 // @desc    Request to claim a profile
@@ -21,13 +21,9 @@ export const requestClaim = async (req, res) => {
         if (!profile) return res.status(404).json({ success: false, message: "Profile not found" });
         if (profile.isClaimed) return res.status(400).json({ success: false, message: "Profile already claimed" });
 
-        // In a real app, this might create a ClaimRequest model
-        // For simplicity, we'll mark it as pending (claimingBy logic could be added)
-        // AND notify admins
-        
         const admins = await User.find({ role: "admin" });
         for (const admin of admins) {
-            await Notification.create({
+            await createNotification({
                 userId: admin._id,
                 sender: userId,
                 type: "claim_request",
@@ -55,7 +51,7 @@ export const approveClaim = async (req, res) => {
             profile = await Startup.findByIdAndUpdate(id, { 
                 isClaimed: true, 
                 claimedBy: approvedUserId,
-                userId: approvedUserId // Link to the user who claimed it
+                userId: approvedUserId 
             }, { new: true });
         } else {
             profile = await Investor.findByIdAndUpdate(id, { 
@@ -66,7 +62,7 @@ export const approveClaim = async (req, res) => {
         }
 
         // Notify user
-        await Notification.create({
+        await createNotification({
             userId: approvedUserId,
             sender: req.user.id,
             type: "claim_approved",

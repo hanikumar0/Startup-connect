@@ -10,11 +10,9 @@ import {
 } from "../controllers/startupController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
-import multer from "multer";
+import { upload } from "../config/cloudinary.js";
 
 const router = express.Router();
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 router.post("/create", protect, authorizeRoles("startup"), createStartup);
 router.get("/me", protect, authorizeRoles("startup"), getMyStartup);

@@ -54,6 +54,7 @@ export default function OutreachDashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [isMounted, setIsMounted] = useState(false);
   const { token } = useAuthStore();
 
   const [file, setFile] = useState<File | null>(null);
@@ -72,6 +73,7 @@ export default function OutreachDashboard() {
   const [generatingLinkedIn, setGeneratingLinkedIn] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     fetchData();
   }, []);
 
@@ -474,22 +476,26 @@ export default function OutreachDashboard() {
                     <BarChart3 size={18} className="text-slate-300" />
                 </div>
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
-                    <BarChart data={[
-                      { name: 'Prospects', value: analytics?.totalLeads || 0 },
-                      { name: 'Contacted', value: analytics?.contactedLeads || 0 },
-                      { name: 'Joined', value: analytics?.joinedLeads || 0 },
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 900}} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 700}} />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                        cursor={{fill: '#f8fafc'}}
-                      />
-                      <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={32} fill="#0f172a" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {isMounted ? (
+                    <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                      <BarChart data={[
+                        { name: 'Prospects', value: analytics?.totalLeads || 0 },
+                        { name: 'Contacted', value: analytics?.contactedLeads || 0 },
+                        { name: 'Joined', value: analytics?.joinedLeads || 0 },
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 900}} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 700}} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                          cursor={{fill: '#f8fafc'}}
+                        />
+                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={32} fill="#0f172a" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="w-full h-full bg-slate-50 animate-pulse rounded-lg" />
+                  )}
                 </div>
              </Card>
              
@@ -502,24 +508,28 @@ export default function OutreachDashboard() {
                     <TrendingUp size={18} className="text-slate-300" />
                 </div>
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
-                    <LineChart data={analytics?.stats || []}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 900}} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 700}} />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="leads" 
-                        stroke="#0f172a" 
-                        strokeWidth={2} 
-                        dot={{r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#fff'}} 
-                        activeDot={{r: 6}}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {isMounted ? (
+                    <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                      <LineChart data={analytics?.stats || []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 900}} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 700}} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="leads" 
+                          stroke="#0f172a" 
+                          strokeWidth={2} 
+                          dot={{r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#fff'}} 
+                          activeDot={{r: 6}}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="w-full h-full bg-slate-50 animate-pulse rounded-lg" />
+                  )}
                 </div>
              </Card>
            </div>

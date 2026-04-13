@@ -1,212 +1,483 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState, useCallback } from "react";
+import { 
+    Search, 
+    User, 
+    Building2, 
+    MessageSquare, 
+    Calendar, 
+    ShieldCheck, 
+    Mail, 
+    Loader2, 
+    Sparkles, 
+    ChevronRight,
+    Users,
+    Inbox,
+    Send,
+    CheckCircle2,
+    XCircle,
+    Clock,
+    UserMinus,
+    ExternalLink,
+    Filter,
+    ArrowUpRight,
+    Trash2
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, User, Building2, MessageSquare, Calendar, ShieldCheck, Mail, Loader2, Sparkles, ChevronRight } from "lucide-react";
-import { motion } from "framer-motion";
-import { apiFetch } from "@/lib/api";
-import { ConnectionButton } from "@/components/discover/ConnectionButton";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { initSocket } from "@/lib/socket";
+import { useAuthStore } from "@/lib/store";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 
-interface Connection {
-    id: string;
+interface ConnectionUser {
+    _id: string;
     name: string;
     role: string;
     avatar?: string;
-    connectionId: string;
-    connectedAt: string;
-    email: string;
-    status: string;
+    bio?: string;
+    email?: string;
+}
+
+interface ConnectionRequest {
+    _id: string;
+    sender: ConnectionUser;
+    recipient: ConnectionUser;
+    status: "PENDING" | "ACCEPTED" | "REJECTED";
+    message?: string;
+    createdAt: string;
 }
 
 export default function ConnectionsPage() {
-    const [connections, setConnections] = useState<Connection[]>([]);
-    const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+    const { user, token } = useAuthStore();
+    const [activeTab, setActiveTab] = useState("received");
+    const [received, setReceived] = useState<ConnectionRequest[]>([]);
+    const [sent, setSent] = useState<ConnectionRequest[]>([]);
+    const [connections, setConnections] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [processingId, setProcessingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            await Promise.all([fetchConnections(), fetchPending()]);
+            const [receivedRes, sentRes, connectionsRes] = await Promise.all([
+                apiFetch("/api/connections/pending"),
+                apiFetch("/api/connections/sent"),
+                apiFetch("/api/users/connections")
+            ]);
+
+            const [receivedData, sentData, connectionsData] = await Promise.all([
+                receivedRes.json(),
+                sentRes.json(),
+                connectionsRes.json()
+            ]);
+
+            if (receivedData.success) setReceived(receivedData.data);
+            if (sentData.success) setSent(sentData.data);
+            if (connectionsData.success) setConnections(connectionsData.connections);
         } catch (error) {
-            console.error("Error fetching data:", error);
+            console.error("Scale Error:", error);
+            toast.error("Failed to sync network data");
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
-    const fetchConnections = async () => {
-        try {
-            const response = await apiFetch("/api/users/connections");
-            const data = await response.json();
-            if (data.success) setConnections(data.connections);
-        } catch (error) {}
-    };
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
-    const fetchPending = async () => {
-        try {
-            const response = await apiFetch("/api/connections/pending");
-            const data = await response.json();
-            if (data.success) setPendingRequests(data.data || []);
-        } catch (error) {}
-    };
+    useEffect(() => {
+        if (!user?.id || !token) return;
+        const socket = initSocket(token, user.id);
+        
+        const handleUpdate = () => {
+            fetchData();
+        };
 
-    const handleAccept = async (connId: string, userId: string) => {
-        setProcessingId(userId);
+        socket.on(`connection_update_${user.id}`, handleUpdate);
+        socket.on(`notification_${user.id}`, handleUpdate);
+
+        return () => {
+            socket.off(`connection_update_${user.id}`, handleUpdate);
+            socket.off(`notification_${user.id}`, handleUpdate);
+        };
+    }, [user?.id, token, fetchData]);
+
+    const handleRespond = async (id: string, status: "ACCEPTED" | "REJECTED") => {
+        setProcessingId(id);
         try {
-            const res = await apiFetch(`/api/connections/respond/${connId}`, {
+            const res = await apiFetch(`/api/connections/respond/${id}`, {
                 method: "PUT",
-                body: JSON.stringify({ status: "ACCEPTED" }),
+                body: JSON.stringify({ status }),
             });
             const data = await res.json();
             if (data.success) {
-                toast.success("Connection accepted!");
+                toast.success(status === "ACCEPTED" ? "Network access granted" : "Request declined");
                 fetchData();
             }
-        } catch (error) {} finally { setProcessingId(null); }
+        } catch (error) {
+            toast.error("Anomalous response intercepted");
+        } finally {
+            setProcessingId(null);
+        }
     };
 
-    const handleReject = async (connId: string, userId: string) => {
-        setProcessingId(userId);
+    const handleCancel = async (id: string) => {
+        setProcessingId(id);
         try {
-            const res = await apiFetch(`/api/connections/respond/${connId}`, {
-                method: "PUT",
-                body: JSON.stringify({ status: "REJECTED" }),
-            });
+            const res = await apiFetch(`/api/connections/cancel/${id}`, { method: "DELETE" });
             const data = await res.json();
             if (data.success) {
-                toast.success("Connection rejected.");
+                toast.success("Transmission aborted");
                 fetchData();
             }
-        } catch (error) {} finally { setProcessingId(null); }
+        } catch (error) {
+            toast.error("Abort sequence failed");
+        } finally {
+            setProcessingId(null);
+        }
     };
 
-    const filtered = connections.filter(c => 
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.role.toLowerCase().includes(searchTerm.toLowerCase())
+    const handleRemove = async (id: string) => {
+        setProcessingId(id);
+        try {
+            const res = await apiFetch(`/api/connections/${id}`, { method: "DELETE" });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("Connection dissolved");
+                fetchData();
+            }
+        } catch (error) {
+            toast.error("Termination error");
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const EmptyState = ({ type }: { type: string }) => (
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-24 text-center space-y-4 bg-white/50 border border-dashed border-slate-200 rounded-[2.5rem] mt-4"
+        >
+            <div className="h-16 w-16 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-300">
+                {type === "received" ? <Inbox size={32} /> : type === "sent" ? <Send size={32} /> : <Users size={32} />}
+            </div>
+            <div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                    {type === "received" ? "No new requests" : type === "sent" ? "No sent requests" : "No connections yet"}
+                </h3>
+                <p className="text-xs font-medium text-slate-400 max-w-[200px] mx-auto leading-relaxed italic">
+                    {type === "received" ? "You're all caught up! New requests will appear here." : type === "sent" ? "You haven't sent any requests yet." : "Start building your network by exploring profiles."}
+                </p>
+            </div>
+            <Button variant="outline" className="h-10 rounded-xl px-6 font-black text-[10px] uppercase tracking-widest border-slate-200" asChild>
+                <Link href="/dashboard/discover">Find People to Connect</Link>
+            </Button>
+        </motion.div>
     );
 
-    if (isLoading) {
-        return <div className="flex h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-indigo-600" /></div>;
-    }
-
     return (
-        <div className="space-y-4">
-            {/* Ultra-Dense Header Toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 py-1 border-b border-slate-50">
-               <div className="flex items-center gap-4">
-                  <h1 className="text-lg font-black text-slate-900 tracking-tight leading-none">Your Connections</h1>
-                  <div className="flex items-center gap-4 text-slate-400">
-                     <div className="flex items-center gap-1.5">
-                        <span className="text-[8px] font-black uppercase tracking-widest">Active:</span>
-                        <span className="text-[11px] font-black text-slate-700">{connections.length}</span>
-                     </div>
-                     <div className="flex items-center gap-1.5">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-orange-400">Pending:</span>
-                        <span className="text-[11px] font-black text-slate-700">{pendingRequests.length}</span>
-                     </div>
-                  </div>
-               </div>
-               
-               <div className="relative w-full max-w-xs group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
-                    <input 
-                        placeholder="Search your network..." 
-                        className="pl-9 h-8 w-full bg-white border border-slate-100 rounded-lg shadow-sm text-[10px] font-bold outline-none focus:border-indigo-100 placeholder:text-slate-300"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+        <div className="space-y-10 pb-20">
+            {/* Supercharged Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Badge className="bg-indigo-600/10 text-indigo-600 border-none font-black text-[8px] tracking-[0.2em] uppercase px-2 h-5">
+                            MY NETWORK
+                        </Badge>
+                        <div className="h-1 w-1 rounded-full bg-slate-200" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic flex items-center gap-1">
+                            <Clock size={10} /> UP TO DATE
+                        </span>
+                    </div>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic">Manage <span className="text-indigo-600 underline decoration-indigo-200 underline-offset-8">Connections</span></h1>
+                    <p className="text-sm font-bold text-slate-400 max-w-lg leading-relaxed italic">
+                        Keep track of your professional relationships and manage incoming requests.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-indigo-400 transition-colors" />
+                        <Input 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search your network..."
+                            className="pl-11 h-12 w-[300px] rounded-2xl bg-white border-slate-100 shadow-sm font-bold text-xs focus:ring-4 focus:ring-indigo-50 transition-all italic"
+                        />
+                    </div>
                 </div>
             </div>
 
-            {/* Pending Requests - Tighter */}
-            {pendingRequests.length > 0 && (
-                <div className="bg-orange-50/30 p-4 rounded-xl border border-orange-100/50">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-                        <h2 className="text-[9px] font-black uppercase tracking-widest text-orange-900/60">Action Required</h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {pendingRequests.map((req) => (
-                            <div key={req._id} className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                   <div className="h-8 w-8 rounded bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
-                                       {req.sender?.name?.charAt(0)}
-                                   </div>
-                                   <div className="min-w-0">
-                                      <h3 className="font-black text-slate-900 text-[11px] truncate leading-tight">{req.sender?.name}</h3>
-                                      <p className="text-[7.5px] uppercase tracking-widest font-bold text-slate-400 truncate">{req.sender?.role}</p>
-                                   </div>
+            <Tabs defaultValue="received" value={activeTab} className="w-full" onValueChange={setActiveTab}>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-px mb-8 overflow-x-auto no-scrollbar">
+                    <TabsList className="bg-transparent h-auto p-0 gap-8">
+                        {[
+                            { value: "received", label: "Received", count: received.length, icon: Inbox },
+                            { value: "sent", label: "Sent", count: sent.length, icon: Send },
+                            { value: "connections", label: "Connections", count: connections.length, icon: Users },
+                        ].map((tab) => (
+                            <TabsTrigger 
+                                key={tab.value}
+                                value={tab.value}
+                                className={cn(
+                                    "relative h-12 px-0 bg-transparent rounded-none border-b-2 border-transparent transition-all",
+                                    "data-[state=active]:bg-transparent data-[state=active]:border-indigo-600 data-[state=active]:shadow-none group"
+                                )}
+                            >
+                                <div className="flex items-center gap-2 px-1">
+                                    <tab.icon size={14} className={cn(
+                                        "transition-colors",
+                                        activeTab === tab.value ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"
+                                    )} />
+                                    <span className={cn(
+                                        "text-[10px] font-black uppercase tracking-[0.15em] transition-colors",
+                                        activeTab === tab.value ? "text-slate-900" : "text-slate-400 group-hover:text-slate-600"
+                                    )}>
+                                        {tab.label}
+                                    </span>
+                                    {tab.count > 0 && (
+                                        <Badge className={cn(
+                                            "h-5 min-w-[20px] rounded-full border-none font-black text-[9px] flex items-center justify-center p-0 px-1.5 transition-all shadow-sm",
+                                            activeTab === tab.value ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-400"
+                                        )}>
+                                            {tab.count}
+                                        </Badge>
+                                    )}
                                 </div>
-                                <div className="flex gap-1.5">
-                                   <Button className="h-6 w-6 p-0 bg-indigo-600 text-white rounded" onClick={() => handleAccept(req._id, req.sender?._id)}>✓</Button>
-                                   <Button variant="ghost" className="h-6 w-6 p-0 text-slate-400 rounded" onClick={() => handleReject(req._id, req.sender?._id)}>×</Button>
-                                </div>
-                            </div>
+                            </TabsTrigger>
                         ))}
+                    </TabsList>
+
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600">
+                            <Filter size={12} className="mr-1.5" /> Filter
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600" onClick={fetchData}>
+                            Refresh
+                        </Button>
                     </div>
                 </div>
-            )}
 
-            {/* Main Network List - Dense Grid */}
-            <div className="space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-50 pb-1.5">
-                    <h3 className="text-[8px] font-black uppercase tracking-widest text-slate-400">Verified Connections</h3>
-                    <Badge className="bg-slate-50 text-slate-400 border-none font-bold text-[7.5px] px-1.5 h-4">Sync 100%</Badge>
-                </div>
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="outline-none"
+                    >
+                        {activeTab === "received" && (
+                            received.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {received.map((req, idx) => (
+                                        <ConnectionCard 
+                                            key={req._id || `received-${idx}`}
+                                            id={req._id}
+                                            user={req.sender}
+                                            message={req.message}
+                                            type="incoming"
+                                            isProcessing={processingId === req._id}
+                                            onAccept={() => handleRespond(req._id, "ACCEPTED")}
+                                            onReject={() => handleRespond(req._id, "REJECTED")}
+                                            delay={idx * 0.05}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <EmptyState type="received" />
+                            )
+                        )}
 
-                {filtered.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {filtered.map((conn) => (
-                            <div key={conn.connectionId} className="group bg-white border border-slate-100 shadow-sm hover:border-indigo-100 transition-all rounded-xl p-3 flex flex-col h-full">
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="h-10 w-10 rounded bg-slate-50 flex items-center justify-center border border-slate-50 text-slate-300 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner shrink-0">
-                                        {conn.role === "investor" ? <User size={18} /> : <Building2 size={18} />}
-                                    </div>
-                                    <Badge className="bg-emerald-50 text-emerald-600 border-none text-[7px] font-black tracking-widest h-4 px-1 rounded flex items-center gap-1">
-                                        <ShieldCheck size={9} fill="currentColor" /> VERIFIED
-                                    </Badge>
+                        {activeTab === "sent" && (
+                            sent.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {sent.map((req, idx) => (
+                                        <ConnectionCard 
+                                            key={req._id || `sent-${idx}`}
+                                            id={req._id}
+                                            user={req.recipient}
+                                            status="PENDING"
+                                            type="outgoing"
+                                            isProcessing={processingId === req._id}
+                                            onCancel={() => handleCancel(req._id)}
+                                            delay={idx * 0.05}
+                                        />
+                                    ))}
                                 </div>
-                                
-                                <div className="space-y-0.5 mb-3 min-h-[32px]">
-                                    <h3 className="text-xs font-black text-slate-900 group-hover:text-indigo-600 truncate transition-colors leading-tight">{conn.name}</h3>
-                                    <p className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider h-3 italic truncate"> {conn.role} </p>
-                                </div>
+                            ) : (
+                                <EmptyState type="sent" />
+                            )
+                        )}
 
-                                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-50/50 mb-3 text-[9.5px] text-slate-500 font-bold overflow-hidden truncate italic opacity-80">
-                                    {conn.email}
+                        {activeTab === "connections" && (
+                            connections.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {connections.map((conn, idx) => (
+                                        <ConnectionCard 
+                                            key={(conn.connectionId || conn._id) || `conn-${idx}`}
+                                            id={conn.connectionId || conn._id}
+                                            user={conn}
+                                            type="connected"
+                                            isProcessing={processingId === (conn.connectionId || conn._id)}
+                                            onRemove={() => handleRemove(conn.connectionId || conn._id)}
+                                            delay={idx * 0.05}
+                                        />
+                                    ))}
                                 </div>
-
-                                <div className="mt-auto flex gap-2">
-                                    <Button className="flex-1 h-7 bg-slate-900 hover:bg-black text-white text-[8px] font-black uppercase tracking-widest rounded-md" asChild>
-                                        <Link href="/dashboard/chat">Message</Link>
-                                    </Button>
-                                    <Button variant="outline" className="flex-1 h-7 text-[8px] font-black uppercase tracking-widest border-slate-100 rounded-md text-slate-500" asChild>
-                                        <Link href="/dashboard/meetings">Meet</Link>
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    !isLoading && (
-                        <div className="py-12 text-center bg-white rounded-xl border border-dashed border-slate-100">
-                            <h3 className="text-xs font-bold text-slate-900">Isolation Detected</h3>
-                            <p className="text-[9px] text-slate-400 font-medium px-4 mt-1 italic">No verified connections found. Link with users in Discover.</p>
-                            <Button className="mt-4 bg-indigo-600 h-8 px-4 rounded-lg font-bold uppercase text-[9px]" asChild><Link href="/dashboard/discover">Discover</Link></Button>
-                        </div>
-                    )
-                )}
-            </div>
+                            ) : (
+                                <EmptyState type="connections" />
+                            )
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+            </Tabs>
         </div>
+    );
+}
+
+function ConnectionCard({ 
+    id, 
+    user, 
+    message, 
+    status, 
+    type, 
+    isProcessing, 
+    onAccept, 
+    onReject, 
+    onCancel, 
+    onRemove,
+    delay = 0 
+}: any) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ delay, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="group relative bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1 transition-all duration-500 overflow-hidden"
+        >
+            {/* Background Accent */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 -mr-16 -mt-16" />
+            
+            <div className="relative z-10 space-y-5">
+                <div className="flex items-start justify-between">
+                    <div className="relative">
+                        <div className="h-16 w-16 rounded-[1.5rem] bg-slate-50 border border-slate-100 overflow-hidden shadow-inner group-hover:bg-indigo-600 transition-all duration-500 flex items-center justify-center">
+                            {user?.avatar ? (
+                                <img src={user.avatar} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={user.name} />
+                            ) : (
+                                <span className="text-xl font-black text-slate-300 group-hover:text-white uppercase transition-colors italic">{user?.name?.charAt(0) || '?'}</span>
+                            )}
+                        </div>
+                        <Badge className="absolute -bottom-2 -right-2 h-7 w-7 rounded-lg bg-emerald-500 border-4 border-white text-white p-0 flex items-center justify-center shadow-lg">
+                            <ShieldCheck size={14} />
+                        </Badge>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1.5">
+                        {type === "incoming" && (
+                            <Badge className="bg-orange-50 text-orange-600 border-none font-black text-[8px] tracking-[0.1em] uppercase px-2 h-5 flex items-center gap-1 italic">
+                               <Inbox size={10} /> NEW REQUEST
+                            </Badge>
+                        )}
+                        {type === "outgoing" && (
+                             <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[8px] tracking-[0.1em] uppercase px-2 h-5 flex items-center gap-1 italic">
+                             <Send size={10} /> QUEUED
+                          </Badge>
+                        )}
+                        {type === "connected" && (
+                            <div className="flex flex-col items-end gap-1.5">
+                                <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[8px] tracking-[0.1em] uppercase px-2 h-5 flex items-center gap-1 italic">
+                                    <Users size={10} /> CONNECTED
+                                </Badge>
+                                {(user.unreadCount ?? 0) > 0 && (
+                                    <Badge className="bg-indigo-600 text-white border-none font-black text-[8px] px-1.5 h-4 flex items-center justify-center animate-bounce">
+                                        {user.unreadCount} NEW
+                                    </Badge>
+                                )}
+                            </div>
+                        )}
+                        <span className="text-[7.5px] font-black text-slate-300 uppercase tracking-widest">{type === 'incoming' ? 'INCOMING' : 'ONLINE'}</span>
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-slate-900 tracking-tight italic group-hover:text-indigo-600 transition-colors">{user?.name || "Unknown User"}</h3>
+                        <ArrowUpRight size={14} className="text-slate-200 group-hover:text-indigo-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    </div>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none h-4 opacity-70 italic">
+                        {user?.role || "ACCESS RESTRICTED"} <span className="mx-1 text-slate-200">•</span> VERIFIED USER
+                    </p>
+                </div>
+
+                {(message || user?.bio) && (
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-50/50 text-[11px] font-bold text-slate-500 leading-relaxed italic line-clamp-2 min-h-[54px] transition-all group-hover:bg-indigo-50/30">
+                        "{message || user?.bio || "No intro message provided."}"
+                    </div>
+                )}
+
+                <div className="pt-2">
+                    {type === "incoming" ? (
+                        <div className="flex gap-2">
+                            <Button 
+                                className="flex-1 h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all border-none"
+                                onClick={onAccept}
+                                disabled={isProcessing}
+                            >
+                                {isProcessing ? <Loader2 className="animate-spin h-4 w-4" /> : "ACCEPT"}
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                className="flex-1 h-11 border-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                onClick={onReject}
+                                disabled={isProcessing}
+                            >
+                                DECLINE
+                            </Button>
+                        </div>
+                    ) : type === "outgoing" ? (
+                        <Button 
+                            variant="outline" 
+                            className="w-full h-11 border-dashed border-red-100 text-red-400 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all gap-2"
+                            onClick={onCancel}
+                            disabled={isProcessing}
+                        >
+                            {isProcessing ? <Loader2 className="animate-spin h-4 w-4" /> : <><Trash2 size={14} /> CANCEL REQUEST</>}
+                        </Button>
+                    ) : (
+                        <div className="flex gap-2">
+                            <Button 
+                                className="flex-1 h-11 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-200 transition-all gap-2"
+                                asChild
+                            >
+                                <Link href={`/dashboard/chat?id=${user.conversationId || ''}`}>
+                                    <MessageSquare size={14} /> CHAT
+                                </Link>
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                className="h-11 w-11 p-0 border-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                onClick={onRemove}
+                                disabled={isProcessing}
+                            >
+                                <UserMinus size={16} />
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </motion.div>
     );
 }

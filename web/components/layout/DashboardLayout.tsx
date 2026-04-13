@@ -38,7 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         // Let the SocketProvider handle initialization
         // We just attach the listener to the singleton
-        const socket = initSocket(token); 
+        const socket = initSocket(token, user.id); 
         const handler = () => fetchNotifications();
         
         fetchNotifications();
@@ -102,8 +102,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                 </header>
 
-                <ScrollArea className="flex-1">
-                    <div className="p-10 max-w-[1600px] mx-auto min-h-screen">
+                <ScrollArea className="flex-1 h-full">
+                    <div className="p-10 max-w-[1600px] mx-auto">
                         <div className="space-y-16">
                            {children}
                         </div>

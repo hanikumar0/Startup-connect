@@ -1,6 +1,6 @@
 import Meeting from "../models/Meeting.js";
 import User from "../models/User.js";
-import Notification from "../models/Notification.js";
+import { createNotification } from "../services/notificationService.js";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 
@@ -32,7 +32,13 @@ export const scheduleMeeting = async (req, res) => {
                 conversationId: conversation._id,
                 senderId: userId,
                 text: `📅 New Meeting Scheduled: ${title} at ${new Date(startTime).toLocaleString()}`,
-                messageType: "meeting"
+                messageType: "meeting",
+                meetingInfo: {
+                    meetingId: meeting._id,
+                    title: title,
+                    startTime: startTime,
+                    status: "scheduled"
+                }
             });
             
             await Conversation.findByIdAndUpdate(conversation._id, {
@@ -45,13 +51,13 @@ export const scheduleMeeting = async (req, res) => {
         }
 
         // Create persistent notification for guest
-        await Notification.create({
+        await createNotification({
             userId: guestId,
             sender: userId,
-            type: "meeting_scheduled",
-            title: "Meeting Scheduled",
+            type: "meeting_request",
+            title: "Meeting Request",
             message: `${req.user.name} has scheduled a meeting with you.`,
-            link: "/dashboard/meetings"
+            link: "/dashboard/chat" // Link to chat to respond
         });
 
         res.status(201).json({ success: true, meeting });

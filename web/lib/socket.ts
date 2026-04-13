@@ -5,7 +5,7 @@ import { io, Socket } from "socket.io-client";
 let socket: Socket | null = null;
 const GLOBAL_WS_KEY = "_vdr_global_socket";
 
-export const initSocket = (token: string) => {
+export const initSocket = (token: string, userId: string) => {
     // 1. Survival Layer: Check local module OR global window (persists across HMR/Turbo)
     if (!socket && typeof window !== "undefined") {
         socket = (window as any)[GLOBAL_WS_KEY] || null;
@@ -27,6 +27,7 @@ export const initSocket = (token: string) => {
     }
 
     console.log("🌐 [Socket] Initializing Pure WebSocket Singleton...");
+    // Using both auth (token) and query (userId) for maximum reliability mapping
     socket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000", {
         autoConnect: false,
         transports: ["websocket"],
@@ -34,6 +35,7 @@ export const initSocket = (token: string) => {
         reconnectionAttempts: 15,
         reconnectionDelay: 5000,
         auth: { token },
+        query: { userId }, // Explicitly pass userId from store
         withCredentials: true,
         upgrade: false 
     });

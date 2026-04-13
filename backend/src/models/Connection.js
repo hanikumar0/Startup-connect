@@ -31,6 +31,10 @@ const connectionSchema = new mongoose.Schema(
         rejectedAt: {
             type: Date,
         },
+        conversationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Conversation",
+        },
     },
     { timestamps: true }
 );

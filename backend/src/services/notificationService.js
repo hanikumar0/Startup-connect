@@ -18,7 +18,16 @@ export const createNotification = async ({ userId, type, title, message, link })
         // 1. Emit real-time via Socket.io
         const io = getIO();
         if (io) {
-            io.to(userId.toString()).emit("notification", notification);
+            const userIdStr = userId.toString();
+            // General notification event
+            io.to(userIdStr).emit("notification", notification);
+            // Targeted notification event (Legacy support)
+            io.emit(`notification_${userIdStr}`, notification);
+            
+            // Connection-specific update trigger
+            if (["connection_request", "connection_accepted", "match_request", "match_accepted"].includes(type)) {
+                io.emit(`connection_update_${userIdStr}`, { type, notification });
+            }
         }
 
         // 2. Increment unread count in real-time

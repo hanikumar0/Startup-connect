@@ -31,8 +31,10 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 export default function AdminAnalyticsPage() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        setIsMounted(true);
         const fetch = async () => {
             try {
                 const res = await apiFetchJSON("/api/admin/stats");
@@ -107,23 +109,27 @@ export default function AdminAnalyticsPage() {
                             </div>
                         </div>
                         <div className="h-[320px] w-full">
-                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
-                                <AreaChart data={data.analytics?.usersGrowth || []}>
-                                    <defs>
-                                        <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#0f172a" stopOpacity={0.05}/>
-                                            <stop offset="95%" stopColor="#0f172a" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 900}} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 700}} />
-                                    <Tooltip 
-                                        contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                                    />
-                                    <Area type="monotone" dataKey="count" stroke="#0f172a" strokeWidth={2} fill="url(#growthGrad)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                            {isMounted ? (
+                                <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                                    <AreaChart data={data.analytics?.usersGrowth || []}>
+                                        <defs>
+                                            <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#0f172a" stopOpacity={0.05}/>
+                                                <stop offset="95%" stopColor="#0f172a" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 900}} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9, fontWeight: 700}} />
+                                        <Tooltip 
+                                            contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                                        />
+                                        <Area type="monotone" dataKey="count" stroke="#0f172a" strokeWidth={2} fill="url(#growthGrad)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="w-full h-full bg-slate-50 animate-pulse rounded-lg" />
+                            )}
                         </div>
                     </Card>
 

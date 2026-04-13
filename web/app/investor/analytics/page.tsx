@@ -36,8 +36,10 @@ export default function InvestorAnalyticsPage() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [days, setDays] = useState(30);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        setIsMounted(true);
         const fetch = async () => {
             setLoading(true);
             const res = await apiFetchJSON(`/api/analytics/investor?days=${days}`);
@@ -115,25 +117,29 @@ export default function InvestorAnalyticsPage() {
                         </div>
                     </div>
                     <div className="h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
-                            <AreaChart data={data.trend}>
-                                <defs>
-                                    <linearGradient id="investorViz" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="_id" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} dy={15} />
-                                <YAxis axisLine={false} tickLine={false} hide />
-                                <Tooltip 
-                                  contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', background: '#fff' }} 
-                                  itemStyle={{ color: '#059669', fontWeight: 900, textTransform: 'uppercase', fontSize: '9px' }}
-                                />
-                                <Area type="monotone" dataKey="unlocks" stroke="#10b981" strokeWidth={6} fill="url(#investorViz)" dot={{ fill: '#10b981', r: 4 }} />
-                                <Area type="monotone" dataKey="matches" stroke="#6366f1" strokeWidth={3} fill="transparent" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {isMounted ? (
+                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                                <AreaChart data={data.trend}>
+                                    <defs>
+                                        <linearGradient id="investorViz" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="_id" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} dy={15} />
+                                    <YAxis axisLine={false} tickLine={false} hide />
+                                    <Tooltip 
+                                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', background: '#fff' }} 
+                                      itemStyle={{ color: '#059669', fontWeight: 900, textTransform: 'uppercase', fontSize: '9px' }}
+                                    />
+                                    <Area type="monotone" dataKey="unlocks" stroke="#10b981" strokeWidth={6} fill="url(#investorViz)" dot={{ fill: '#10b981', r: 4 }} />
+                                    <Area type="monotone" dataKey="matches" stroke="#6366f1" strokeWidth={3} fill="transparent" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="w-full h-full bg-slate-50 animate-pulse rounded-[2.5rem]" />
+                        )}
                     </div>
                 </Card>
 

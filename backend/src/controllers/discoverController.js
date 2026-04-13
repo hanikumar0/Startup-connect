@@ -232,6 +232,7 @@ export const getRegisteredUsers = async (req, res) => {
             const mappedFallback = fallback.map(item => ({
                 ...item,
                 isExternalLead: true, // Marker for UI
+                role: item.type, // Map type to role for frontend filter consistency
                 name: item.name,
                 firmName: item.firm,
                 industry: item.industry || "Technology",

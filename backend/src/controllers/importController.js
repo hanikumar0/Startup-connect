@@ -43,24 +43,34 @@ class ImportController {
     }
 
     async enrichData(req, res) {
-        const startups = await Startup.find({ logo: { $exists: false } }).limit(50);
-        const investors = await Investor.find({ logo: { $exists: false } }).limit(50);
-        
-        let enrichedCount = 0;
-        
-        for (const s of startups) {
-            const enriched = await enrichmentService.enrichRecord(s, 'startup');
-            await Startup.findByIdAndUpdate(s._id, enriched);
-            enrichedCount++;
+        try {
+            const startups = await Startup.find({ logo: { $exists: false } }).limit(50);
+            const investors = await Investor.find({ logo: { $exists: false } }).limit(50);
+            
+            let enrichedCount = 0;
+            
+            for (const s of startups) {
+                const enriched = await enrichmentService.enrichRecord(s, 'startup');
+                await Startup.findByIdAndUpdate(s._id, enriched);
+                enrichedCount++;
+            }
+            
+            for (const i of investors) {
+                const enriched = await enrichmentService.enrichRecord(i, 'investor');
+                await Investor.findByIdAndUpdate(i._id, enriched);
+                enrichedCount++;
+            }
+            
+            if (res && res.json) {
+                res.json({ success: true, enriched: enrichedCount });
+            }
+            return enrichedCount;
+        } catch (error) {
+            console.error("[Enrichment Controller] Failure:", error.message);
+            if (res && res.status) {
+                res.status(500).json({ success: false, message: error.message });
+            }
         }
-        
-        for (const i of investors) {
-            const enriched = await enrichmentService.enrichRecord(i, 'investor');
-            await Investor.findByIdAndUpdate(i._id, enriched);
-            enrichedCount++;
-        }
-        
-        res.json({ success: true, enriched: enrichedCount });
     }
 
     async runAll(req, res) {

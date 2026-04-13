@@ -7,6 +7,8 @@ import Connection from "../models/Connection.js";
 import Deal from "../models/Deal.js";
 import Meeting from "../models/Meeting.js";
 import Conversation from "../models/Conversation.js";
+import Message from "../models/Message.js";
+import { createNotification } from "../services/notificationService.js";
 
 export const createStartupProfile = async (req, res) => {
     try {
@@ -192,6 +194,7 @@ export const getDiscoverableProfiles = async (req, res) => {
 
             let connectionStatus = "NONE";
             let connectionId = null;
+            let conversationId = null;
 
             if (received && received.status === "PENDING") {
                 connectionStatus = "RECEIVED_PENDING";
@@ -204,10 +207,17 @@ export const getDiscoverableProfiles = async (req, res) => {
                 connectionId = received._id;
             }
 
+            // Find conversation if accepted
+            if (connectionStatus === "ACCEPTED") {
+                // This is a bit expensive in a loop, but okay for MVP skip/limit
+                // Use a findOne check
+            }
+
             return {
                 ...profile._doc,
                 connectionStatus,
-                connectionId
+                connectionId,
+                conversationId: sent?.conversationId || received?.conversationId || null
             };
         });
 
@@ -281,13 +291,13 @@ export const sendConnectionRequest = async (req, res) => {
 
         // Create notification
         const sender = await User.findById(senderId);
-        await Notification.create({
+        await createNotification({
             userId: recipientId,
             sender: senderId,
             type: "match_request",
             title: "New Connection Request",
             message: `${sender.name} wants to connect with you.`,
-            link: "/dashboard/discover"
+            link: "/dashboard/network"
         });
 
         res.status(201).json({ success: true, message: "Connection request sent", connection });
@@ -320,13 +330,16 @@ export const acceptConnectionRequest = async (req, res) => {
             });
 
             if (!existingConversation) {
-                await Conversation.create({
+                const newConv = await Conversation.create({
                     participants: [connection.sender, connection.recipient],
                     isActive: true
                 });
+                connection.conversationId = newConv._id;
+            } else {
+                connection.conversationId = existingConversation._id;
             }
 
-            await Notification.create({
+            await createNotification({
                 userId: connection.sender,
                 sender: userId,
                 type: "match_accepted",
@@ -429,10 +442,28 @@ export const getMyConnections = async (req, res) => {
         for (const conn of connections) {
             const partner = conn.sender._id.toString() === userId ? conn.recipient : conn.sender;
             
-            // Find conversation
-            const conversation = await Conversation.findOne({
+            // Find conversation and unread count
+            let conversation = await Conversation.findOne({
                 participants: { $all: [userId, partner._id] }
             });
+
+            // Auto-provision if missing (Self-healing infrastructure)
+            if (!conversation) {
+                conversation = await Conversation.create({
+                    participants: [userId, partner._id],
+                    isActive: true
+                });
+                console.log(`[Self-Healing] Created missing conversation for ${userId} ↔ ${partner._id}`);
+            }
+
+            let unreadCount = 0;
+            if (conversation) {
+                unreadCount = await Message.countDocuments({
+                    conversationId: conversation._id,
+                    senderId: { $ne: userId },
+                    isRead: false
+                });
+            }
 
             partners.push({
                 id: partner._id,
@@ -441,6 +472,7 @@ export const getMyConnections = async (req, res) => {
                 avatar: partner.avatar,
                 connectionId: conn._id,
                 conversationId: conversation?._id || null,
+                unreadCount,
                 lastMessage: conversation?.lastMessage || null,
                 connectedAt: conn.acceptedAt || conn.updatedAt
             });

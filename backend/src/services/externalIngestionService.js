@@ -2,7 +2,8 @@ import axios from "axios";
 import fs from "fs";
 import path from "path";
 import csvParser from "csv-parser";
-import ExternalProfile from "../models/ExternalProfile.js";
+import ExternalStartup from "../models/ExternalStartup.js";
+import ExternalInvestor from "../models/ExternalInvestor.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -13,7 +14,8 @@ export const ingestionStats = {
     github: 0,
     investors_raw: 0,
     logo: 0,
-    total: 0
+    totalStartups: 0,
+    totalInvestors: 0
 };
 
 /**
@@ -73,7 +75,7 @@ export const fetchProductHunt = async () => {
                 ingestionStats.logo++;
             }
 
-            await ExternalProfile.findOneAndUpdate(
+            await ExternalStartup.findOneAndUpdate(
                 { name: node.name, source: "producthunt" },
                 {
                     name: node.name,
@@ -126,7 +128,7 @@ export const fetchGitHub = async () => {
             const logoUrl = `https://img.logo.dev/${hostname}?token=${process.env.LOGODEV_PUBLISHABLE_KEY}`;
             ingestionStats.logo++;
 
-            await ExternalProfile.findOneAndUpdate(
+            await ExternalStartup.findOneAndUpdate(
                 { name: repo.name, source: "github" },
                 {
                     name: repo.name,
@@ -190,14 +192,13 @@ export const fetchInvestorsCSV = async () => {
                 }
             } catch (e) {}
 
-            await ExternalProfile.findOneAndUpdate(
+            await ExternalInvestor.findOneAndUpdate(
                 { name: data.name, source: "csv" },
                 {
                     name: data.name,
                     description: `Institutional investor from CSV dataset. Focus: ${data.industry}`,
                     website: data.website || "",
                     logo: logoUrl,
-                    tags: [data.industry, "csv"].filter(Boolean),
                     industry: data.industry,
                     source: "csv",
                     type: "investor",
@@ -215,30 +216,37 @@ export const fetchInvestorsCSV = async () => {
  * Master Ingestion Cron Function
  */
 export const runMasterIngestion = async () => {
-    console.log("\n--- Starting Strategic Federated Ingestion ---");
-    
-    // Reset logo count for fresh run
-    ingestionStats.logo = 0;
+    try {
+        console.log("\n--- Starting Strategic Federated Ingestion ---");
+        
+        // Reset logo count for fresh run
+        ingestionStats.logo = 0;
 
-    await Promise.all([
-        fetchProductHunt(),
-        fetchGitHub(),
-        fetchInvestorsCSV()
-    ]);
-    
-    // STEP 7 — SET TOTAL COUNT
-    ingestionStats.total = await ExternalProfile.countDocuments({ isExternal: true });
+        await Promise.all([
+            fetchProductHunt().catch(e => console.error("PH Error:", e.message)),
+            fetchGitHub().catch(e => console.error("GitHub Error:", e.message)),
+            fetchInvestorsCSV().catch(e => console.error("CSV Error:", e.message))
+        ]);
+        
+        // STEP 7 — SET TOTAL COUNTS
+        ingestionStats.totalStartups = await ExternalStartup.countDocuments({ isExternal: true });
+        ingestionStats.totalInvestors = await ExternalInvestor.countDocuments({ isExternal: true });
 
-    // STEP 8 — BACKEND LOG OUTPUT
-    console.log("================================");
-    console.log("INGESTION SUMMARY");
-    console.log("================================");
-    console.log("Product Hunt:", ingestionStats.productHunt);
-    console.log("GitHub:", ingestionStats.github);
-    console.log("investors_raw.csv:", ingestionStats.investors_raw);
-    console.log("Logo.dev enriched:", ingestionStats.logo);
-    console.log("Total External Records:", ingestionStats.total);
-    console.log("================================");
+        // STEP 8 — STRICT BACKEND LOG OUTPUT
+        console.log("\n================================");
+        console.log("INGESTION SUMMARY");
+        console.log("================================");
+        console.log(`Product Hunt (Startups): ${ingestionStats.productHunt}`);
+        console.log(`GitHub (Startups):       ${ingestionStats.github}`);
+        console.log(`investors_raw.csv:       ${ingestionStats.investors_raw}`);
+        console.log(`Logo.dev enriched:       ${ingestionStats.logo}`);
+        console.log(`Total Startups in DB:    ${ingestionStats.totalStartups}`);
+        console.log(`Total Investors in DB:   ${ingestionStats.totalInvestors}`);
+        console.log("================================\n");
 
-    return ingestionStats;
+        return ingestionStats;
+    } catch (error) {
+        console.error("Critical Ingestion Failure:", error.message);
+        throw error; // Rethrow for caller side handling (e.g. app.js)
+    }
 };
