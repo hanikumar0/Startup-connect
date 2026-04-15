@@ -34,10 +34,7 @@ export function Sidebar() {
   ];
 
   const settingsItems = [
-    { label: "Profile", href: "/dashboard/settings/profile", icon: User },
-    { label: "Verification", href: "/dashboard/settings/verification", icon: ShieldCheck },
-    { label: "Security", href: "/dashboard/settings/security", icon: Lock },
-    { label: "Notifications", href: "/dashboard/settings/notifications", icon: Bell },
+    { label: "Settings", href: "/dashboard/settings", icon: User },
   ];
 
   return (

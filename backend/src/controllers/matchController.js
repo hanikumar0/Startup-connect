@@ -2,6 +2,7 @@ import {
     getTopInvestorsForStartup, 
     getTopStartupsForInvestor 
 } from "../services/matchingService.js";
+import { getSmartMatches, getAIMatches, trackInteraction } from "../services/smartMatchmakingService.js";
 import Startup from "../models/Startup.js";
 import Investor from "../models/Investor.js";
 import Connection from "../models/Connection.js";
@@ -92,6 +93,111 @@ export const getMyMatches = async (req, res) => {
             page: Number(page),
             pages: Math.ceil(matches.length / Number(limit))
         });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get smart weighted matches for the current user
+// @route   GET /api/match/smart
+export const getSmartMatchesForUser = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const matches = await getSmartMatches(userId);
+
+        // Add connection status
+        const sentRequests = await Connection.find({ sender: userId });
+        const receivedRequests = await Connection.find({ recipient: userId });
+
+        const enrichedMatches = matches.map(match => {
+            const profile = match.investor || match.startup;
+            const targetUserId = profile.userId?._id?.toString() || profile.userId?.toString();
+            
+            const sent = sentRequests.find(conn => conn.recipient.toString() === targetUserId);
+            const received = receivedRequests.find(conn => conn.sender.toString() === targetUserId);
+
+            let connectionStatus = "NONE";
+            let connectionId = null;
+
+            if (received && received.status === "PENDING") {
+                connectionStatus = "RECEIVED_PENDING";
+                connectionId = received._id;
+            } else if (sent) {
+                connectionStatus = sent.status;
+                connectionId = sent._id;
+            } else if (received) {
+                connectionStatus = `RECEIVED_${received.status}`;
+                connectionId = received._id;
+            }
+
+            return {
+                ...match,
+                connectionStatus,
+                connectionId
+            };
+        });
+
+        res.status(200).json({ success: true, data: enrichedMatches });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get AI enhanced matches (Behavior Based)
+// @route   GET /api/match/ai
+export const getAIMatchesForUser = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const matches = await getAIMatches(userId);
+
+        // Add connection status
+        const sentRequests = await Connection.find({ sender: userId });
+        const receivedRequests = await Connection.find({ recipient: userId });
+
+        const enrichedMatches = matches.map(match => {
+            const profile = match.investor || match.startup;
+            const targetUserId = profile.userId?._id?.toString() || profile.userId?.toString();
+            
+            const sent = sentRequests.find(conn => conn.recipient.toString() === targetUserId);
+            const received = receivedRequests.find(conn => conn.sender.toString() === targetUserId);
+
+            let connectionStatus = "NONE";
+            let connectionId = null;
+
+            if (received && received.status === "PENDING") {
+                connectionStatus = "RECEIVED_PENDING";
+                connectionId = received._id;
+            } else if (sent) {
+                connectionStatus = sent.status;
+                connectionId = sent._id;
+            } else if (received) {
+                connectionStatus = `RECEIVED_${received.status}`;
+                connectionId = received._id;
+            }
+
+            return {
+                ...match,
+                connectionStatus,
+                connectionId
+            };
+        });
+
+        res.status(200).json({ success: true, data: enrichedMatches });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Log interaction for behavior learning
+// @route   POST /api/match/track
+export const logInteraction = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { targetUserId, action, metadata } = req.body;
+        
+        await trackInteraction(userId, targetUserId, action, metadata);
+        
+        res.status(200).json({ success: true, message: "Interaction logged" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

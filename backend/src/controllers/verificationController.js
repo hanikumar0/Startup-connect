@@ -58,6 +58,42 @@ export const verifyAadhaar = async (req, res) => {
     }
 };
 
+// Aadhaar Verification - Step 2: Submit OTP
+export const submitAadhaarOTP = async (req, res) => {
+    try {
+        const { otp, clientId } = req.body;
+        const userId = req.user.id;
+
+        if (!otp || !clientId) {
+            return res.status(400).json({ message: "OTP and Client ID are required" });
+        }
+
+        const result = await callVerificationService("/corporate/aadhaar-verification/submit-otp", {
+            otp,
+            client_id: clientId
+        });
+
+        if (result.success) {
+            await User.findByIdAndUpdate(userId, {
+                isVerified: true,
+                "kycStatus": "verified",
+                "kycData.idType": "Aadhaar",
+                "kycData.idNumber": result.data?.id_number || undefined,
+                name: result.data?.full_name || undefined
+            });
+            return res.status(200).json({ 
+                success: true, 
+                message: "Aadhaar e-KYC completed successfully", 
+                data: result.data 
+            });
+        }
+
+        res.status(400).json({ success: false, message: "Invalid OTP or verification failed" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // PAN Verification
 export const verifyPAN = async (req, res) => {
     try {

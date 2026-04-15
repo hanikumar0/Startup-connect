@@ -10,24 +10,39 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
                 clientID: process.env.GOOGLE_CLIENT_ID,
                 clientSecret: process.env.GOOGLE_CLIENT_SECRET,
                 callbackURL: `${process.env.PUBLIC_BACKEND_URL || process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/google/callback`,
+                passReqToCallback: true
             },
-            async (accessToken, refreshToken, profile, done) => {
+            async (req, accessToken, refreshToken, profile, done) => {
                 try {
-                    let user = await User.findOne({ googleId: profile.id });
+                    let user = await User.findOne({ 
+                        $or: [{ googleId: profile.id }, { email: profile.emails?.[0]?.value }]
+                    });
+
+                    const googleTokens = {
+                        access_token: accessToken,
+                        refresh_token: refreshToken,
+                        expiry_date: Date.now() + 3600 * 1000, // Access token expires in 1 hour
+                        token_type: "Bearer"
+                    };
 
                     if (!user) {
-                        user = await User.findOne({ email: profile.emails?.[0]?.value });
-                        if (user) {
-                            user.googleId = profile.id;
-                            await user.save();
+                        user = await User.create({
+                            name: profile.displayName,
+                            email: profile.emails[0].value,
+                            googleId: profile.id,
+                            googleTokens,
+                            isEmailVerified: true,
+                        });
+                    } else {
+                        user.googleId = profile.id;
+                        // Only update refresh token if a new one is provided (Google only sends it on first consent)
+                        if (refreshToken) {
+                            user.googleTokens = googleTokens;
                         } else {
-                            user = await User.create({
-                                name: profile.displayName,
-                                email: profile.emails[0].value,
-                                googleId: profile.id,
-                                isEmailVerified: true,
-                            });
+                            user.googleTokens.access_token = accessToken;
+                            user.googleTokens.expiry_date = Date.now() + 3600 * 1000;
                         }
+                        await user.save();
                     }
                     return done(null, user);
                 } catch (error) {

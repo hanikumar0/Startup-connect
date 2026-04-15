@@ -10,6 +10,81 @@ import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { createNotification } from "../services/notificationService.js";
 
+export const updateUserProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const updates = req.body;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // 1. RULE: PERMANENT FIELDS (LOCKED)
+        // Name, Company Name, and Role cannot be changed once set
+        if (updates.name && updates.name !== user.name) delete updates.name;
+        if (updates.companyName && updates.companyName !== user.companyName) delete updates.companyName;
+        if (updates.role && updates.role !== user.role) delete updates.role;
+
+        // 2. RULE: CONTACT FIELDS (REQUIRES VERIFICATION - Skip for now as per MVP but logic reserved)
+        if (updates.email && updates.email !== user.email) {
+            // In a real system, we'd check if (updates.emailOtpVerified)
+            // For now, we block direct updates to focus on the rule-based architecture
+            delete updates.email;
+        }
+        if (updates.phone && updates.phone !== user.phone) {
+            delete updates.phone;
+        }
+
+        // 3. RULE: COOLING PERIODS (60 Days)
+        const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
+        const now = new Date();
+
+        // Headline Cooldown
+        if (updates.headline && updates.headline !== user.headline) {
+            if (user.lastHeadlineUpdate && (now.getTime() - user.lastHeadlineUpdate.getTime() < SIXTY_DAYS_MS)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Headline can only be updated once every 60 days." 
+                });
+            }
+            updates.lastHeadlineUpdate = now;
+        }
+
+        // Market Focus Cooldown
+        if (updates.focus && JSON.stringify(updates.focus) !== JSON.stringify(user.focus)) {
+            if (user.lastFocusUpdate && (now.getTime() - user.lastFocusUpdate.getTime() < SIXTY_DAYS_MS)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Market Focus can only be updated once every 60 days." 
+                });
+            }
+            updates.lastFocusUpdate = now;
+        }
+
+        // 4. ROLE SPECIFIC RULES
+        if (user.role === "STARTUP" || user.role === "startup") {
+            // User cannot change stage manually
+            delete updates.stage;
+        } else {
+            // Investor cannot change stage or certain tiers manually
+            delete updates.investorStage;
+            delete updates.investmentsMadeCount;
+            delete updates.totalAmountInvested;
+        }
+
+        // 5. URL VALIDATION FOR WEBSITE
+        if (updates.website && !updates.website.startsWith('http')) {
+            updates.website = `https://${updates.website}`;
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
+        res.status(200).json({ success: true, user: updatedUser });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export const createStartupProfile = async (req, res) => {
     try {
         const userId = req.user.id;

@@ -3,15 +3,17 @@ import jwt from "jsonwebtoken";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import Connection from "../models/Connection.js";
+let io;
 
 const setupSockets = (server) => {
     const isProduction = process.env.NODE_ENV === "production";
     const allowedOrigins = [
         process.env.FRONTEND_URL,
         "http://localhost:3000",
+        "http://localhost:5000", // Added for local development consistency
     ].filter(Boolean);
 
-    const io = new Server(server, {
+    io = new Server(server, {
         cors: {
             origin: isProduction ? allowedOrigins : "*",
             methods: ["GET", "POST", "OPTIONS"],
@@ -193,8 +195,71 @@ const setupSockets = (server) => {
             }
         });
 
+        // --- WebRTC & Meeting Signaling ---
+        socket.on("join_meeting", (meetingId) => {
+            socket.join(`meeting_${meetingId}`);
+            console.log(`👤 User ${socket.userId} joined meeting room: meeting_${meetingId}`);
+            
+            // Notify others in the room
+            socket.to(`meeting_${meetingId}`).emit("participant_joined", {
+                userId: socket.userId,
+                socketId: socket.id
+            });
+        });
+
+        socket.on("signal", (data) => {
+            const { to, signal, from } = data;
+            // Send signal to specific peer (to is the socketId of the target)
+            io.to(to).emit("signal", {
+                signal,
+                from: socket.id,
+                userId: socket.userId
+            });
+        });
+
+        socket.on("meeting_chat", (data) => {
+            const { meetingId, text, senderName } = data;
+            const message = {
+                text,
+                senderId: socket.userId,
+                senderName,
+                timestamp: new Date()
+            };
+            io.to(`meeting_${meetingId}`).emit("receive_meeting_chat", message);
+        });
+
+        socket.on("toggle_mute", ({ meetingId, muted }) => {
+            socket.to(`meeting_${meetingId}`).emit("participant_muted", {
+                userId: socket.userId,
+                muted
+            });
+        });
+
+        socket.on("toggle_video", ({ meetingId, off }) => {
+            socket.to(`meeting_${meetingId}`).emit("participant_video_off", {
+                userId: socket.userId,
+                off
+            });
+        });
+
+        socket.on("screen_share", ({ meetingId, sharing }) => {
+            socket.to(`meeting_${meetingId}`).emit("participant_screen_sharing", {
+                userId: socket.userId,
+                sharing
+            });
+        });
+
+        socket.on("leave_meeting", (meetingId) => {
+            socket.leave(`meeting_${meetingId}`);
+            socket.to(`meeting_${meetingId}`).emit("participant_left", {
+                userId: socket.userId,
+                socketId: socket.id
+            });
+        });
+
         socket.on("disconnect", (reason) => {
-            console.log(`👋 User disconnected: ${socket.id} (Disconnected بسبب: ${reason})`);
+            console.log(`👋 User disconnected: ${socket.id} (Reason: ${reason})`);
+            // Cleanup meeting states if necessary
         });
     });
 
@@ -202,10 +267,6 @@ const setupSockets = (server) => {
 };
 
 export const getIO = () => {
-    if (!io) {
-        // This might happen if called before server.listen
-        return null;
-    }
     return io;
 };
 

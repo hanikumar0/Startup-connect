@@ -10,10 +10,10 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
-        "match_found",
-        "match_request",
-        "match_accepted",
-        "new_message",
+        "reminder_15min",
+        "instant_start",
+        "cancelled",
+        "rescheduled",
         "meeting_request",
         "meeting_accepted",
         "meeting_rejected",
@@ -28,6 +28,15 @@ const notificationSchema = new mongoose.Schema(
         "identity_verified"
       ],
       required: true,
+    },
+    meetingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Meeting",
+    },
+    status: {
+      type: String,
+      enum: ["pending", "sent", "failed"],
+      default: "pending",
     },
     title: {
       type: String,

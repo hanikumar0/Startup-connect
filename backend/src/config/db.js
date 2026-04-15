@@ -27,6 +27,16 @@ const connectDB = async () => {
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+
+    // Drop problematic legacy index if exists
+    try {
+        const meetingsCollection = conn.connection.collection('meetings');
+        await meetingsCollection.dropIndex('roomId_1');
+        console.log("🧹 Dropped defunct 'roomId_1' unique index from meetings collection.");
+    } catch (e) {
+        // If index doesn't exist, we don't care
+    }
+
     return conn;
   } catch (error) {
     if (error.code === 'ENOTFOUND') {

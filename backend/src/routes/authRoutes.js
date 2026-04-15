@@ -34,7 +34,11 @@ router.get("/me", protect, getMe);
 router.get("/profile", protect, getUserProfile);
 
 // Google Auth
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/google", passport.authenticate("google", { 
+  scope: ["profile", "email", "https://www.googleapis.com/auth/calendar.events"],
+  accessType: "offline",
+  prompt: "consent"
+}));
 router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: "/login", session: false }),

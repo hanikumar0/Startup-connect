@@ -66,11 +66,19 @@ export const register = async (req, res) => {
 // @route   POST /api/auth/login
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, loginType } = req.body; // loginType: 'startup' or 'investor'
 
     const user = await User.findOne({ email }).select("+password");
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // ROLE VALIDATION: Strict Separation
+    if (loginType && user.role.toLowerCase() !== loginType.toLowerCase()) {
+        return res.status(403).json({ 
+            success: false, 
+            message: `You are registered as a ${user.role}. Please use the ${user.role} login portal.` 
+        });
     }
 
     user.lastLogin = new Date();
@@ -331,6 +339,7 @@ export const registerVerify = async (req, res) => {
             role: role || "startup",
             provider: "email",
             isVerified: true,
+            emailVerified: true, // Mark as verified since OTP was successful
         });
 
         const token = generateToken(user._id);
@@ -346,6 +355,7 @@ export const registerVerify = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 isVerified: user.isVerified,
+                emailVerified: user.emailVerified,
                 onboardingCompleted: user.onboardingCompleted,
             },
         });

@@ -30,6 +30,7 @@ export const sendRequest = async (req, res) => {
         const connection = await Connection.create({
             sender: senderId,
             recipient: recipientId,
+            requestedBy: senderId,
             message,
             status: "PENDING"
         });
@@ -110,47 +111,33 @@ export const respondToRequest = async (req, res) => {
 // @route   GET /api/connections
 export const getMyConnections = async (req, res) => {
     try {
+        console.log(`[NETWORK] Fetching connections for User: ${req.user.id}`);
+        
         const connections = await Connection.find({
             $or: [{ sender: req.user.id }, { recipient: req.user.id }],
             status: "ACCEPTED"
-        }).populate("sender recipient", "name avatar role lastLogin");
+        }).populate("sender recipient", "name avatar role email lastLogin profilePic");
 
-        // Enforce ObjectId-based conversations for every connection
-        const enrichedConnections = await Promise.all(connections.map(async (conn) => {
+        console.log(`[NETWORK] Connections Found in DB: ${connections.length}`);
+
+        const connectedUsers = connections.map(conn => {
             const partner = conn.sender._id.toString() === req.user.id.toString() ? conn.recipient : conn.sender;
-            
-            let conversation = await Conversation.findOne({
-                participants: { $all: [conn.sender._id, conn.recipient._id] }
-            });
-
-            // Auto-provision if missing (Self-healing infrastructure)
-            if (!conversation) {
-                conversation = await Conversation.create({
-                    participants: [conn.sender._id, conn.recipient._id]
-                });
-            }
-
-            const unreadCount = await Message.countDocuments({
-                conversationId: conversation._id,
-                senderId: { $ne: req.user.id },
-                isRead: false
-            });
-
             return {
                 id: partner._id,
+                _id: partner._id, // Support both id and _id for compatibility
                 name: partner.name,
+                email: partner.email,
                 role: partner.role,
-                avatar: partner.avatar,
+                avatar: partner.avatar || partner.profilePic,
                 connectionId: conn._id,
-                conversationId: conversation._id,
-                unreadCount,
                 status: conn.status
             };
-        }));
+        });
 
-        console.log(`[DB] Fetched ${enrichedConnections.length} accepted connections with unread counts`);
-        res.status(200).json({ success: true, connections: enrichedConnections });
+        console.log(`[NETWORK] Returning ${connectedUsers.length} sanitized user profiles`);
+        res.status(200).json({ success: true, connections: connectedUsers });
     } catch (error) {
+        console.error(`[NETWORK] Strategic failure in fetching connections: ${error.message}`);
         res.status(500).json({ success: false, message: error.message });
     }
 };

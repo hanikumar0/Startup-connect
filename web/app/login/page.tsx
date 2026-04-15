@@ -18,6 +18,7 @@ function LoginContent() {
     const { setAuth, user } = useAuthStore();
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [loginType, setLoginType] = useState("startup");
     const [error, setError] = useState<string | null>(null);
 
     // Handle OAuth callbacks
@@ -75,7 +76,7 @@ function LoginContent() {
         try {
             const response = await apiFetch("/api/auth/login", {
                 method: "POST",
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ ...formData, loginType }),
             });
 
             const data = await response.json();
@@ -139,6 +140,22 @@ function LoginContent() {
                         >
                             LinkedIn
                         </Button>
+                    </div>
+
+                    <div className="flex gap-2 p-1 bg-slate-50 dark:bg-zinc-900 rounded-2xl mb-8">
+                        {["startup", "investor"].map((r) => (
+                            <button
+                                key={r}
+                                onClick={() => setLoginType(r)}
+                                className={`flex-1 py-3 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase ${
+                                    loginType === r 
+                                    ? "bg-primary text-white shadow-lg shadow-primary/20" 
+                                    : "text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                }`}
+                            >
+                                {r} Login
+                            </button>
+                        ))}
                     </div>
 
                     <div className="relative mb-8">

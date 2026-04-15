@@ -12,13 +12,15 @@ import {
     acceptConnectionRequest,
     submitVerification,
     updatePitchDeck,
-    getMyConnections
+    getMyConnections,
+    updateUserProfile
 } from "../controllers/userController.js";
 import { getRecommendations } from "../controllers/recommendationController.js";
 
 const router = express.Router();
 
 router.get("/profile", protect, getMyProfile);
+router.put("/profile", protect, updateUserProfile);
 router.get("/stats", protect, getDashboardStats);
 router.get("/discover", protect, getDiscoverableProfiles);
 router.get("/notifications", protect, getNotifications);

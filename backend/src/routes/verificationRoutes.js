@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyAadhaar, verifyPAN, verifyBusiness, getDeepHistoryAudit } from "../controllers/verificationController.js";
+import { verifyAadhaar, submitAadhaarOTP, verifyPAN, verifyBusiness, getDeepHistoryAudit } from "../controllers/verificationController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(protect);
 
 router.post("/aadhaar", verifyAadhaar);
+router.post("/aadhaar/otp", submitAadhaarOTP);
 router.post("/pan", verifyPAN);
 router.post("/business", verifyBusiness);
 router.post("/deep-audit", getDeepHistoryAudit);

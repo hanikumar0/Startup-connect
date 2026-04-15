@@ -39,6 +39,7 @@ import importRoutes from "./routes/importRoutes.js";
 import externalRoutes from "./routes/externalRoutes.js";
 import ingestionRoutes from "./routes/ingestionRoutes.js";
 import networkRoutes from "./routes/networkRoutes.js";
+import kycRoutes from "./routes/kycRoutes.js";
 import passport from "./config/passport.js";
 import mongoose from "mongoose";
 import AppError from "./utils/AppError.js";
@@ -152,6 +153,7 @@ app.use("/api/import", importRoutes);
 app.use("/api/external", externalRoutes);
 app.use("/api/ingestion", ingestionRoutes);
 app.use("/api/network", networkRoutes);
+app.use("/api/kyc", kycRoutes);
 
 // Error Handling
 app.all("*", (req, res, next) => {
