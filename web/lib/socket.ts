@@ -80,3 +80,27 @@ export const disconnectSocket = () => {
         socket = null;
     }
 };
+
+/**
+ * Initializes a socket connection specifically for the Virtual Data Room namespace
+ */
+export const initVDRSocket = (token: string, userId: string) => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    // Socket.io syntax for namespaces is io(url + "/namespace")
+    const vdrSocket = io(`${baseUrl}/vdr`, {
+        transports: ["websocket"],
+        reconnection: true,
+        auth: { token },
+        query: { userId },
+        withCredentials: true,
+        upgrade: false
+    });
+
+    console.log("🔒 [VDR Socket] Initializing namespace connection...");
+    
+    vdrSocket.on("connect", () => {
+        console.log("✅ [VDR Socket] Connected:", vdrSocket.id);
+    });
+
+    return vdrSocket;
+};

@@ -19,7 +19,8 @@ import {
   Loader2,
   FileText,
   BarChart3,
-  PieChart
+  PieChart,
+  ChevronRight
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -144,6 +145,35 @@ export default function UnifiedDashboard() {
                 {/* Discovery & Activity Area */}
                 <div className="lg:col-span-8 space-y-10">
                     
+                    {/* Secure Data Room Quick Access */}
+                    <section className="space-y-6">
+                         <div className="flex items-center justify-between px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 flex items-center gap-2">
+                                <Lock size={12} className="text-indigo-600" /> Secure Data Rooms
+                            </h3>
+                            <Link href="/dashboard/vdr" className="text-[10px] font-bold text-indigo-600 hover:opacity-70 transition-opacity italic">Open Vault</Link>
+                        </div>
+                        <Card 
+                            className="group rounded-[32px] border-none bg-white shadow-sm hover:shadow-2xl transition-all duration-700 cursor-pointer overflow-hidden border border-slate-50"
+                            onClick={() => router.push("/dashboard/vdr")}
+                        >
+                            <CardContent className="p-8 flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-6">
+                                    <div className="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                                        <ShieldCheck size={24} className="text-white" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="text-xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors">Go to Data Room</h4>
+                                        <p className="text-[11px] font-bold text-slate-400 italic">Securely share and manage files with your partners.</p>
+                                    </div>
+                                </div>
+                                <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
+                                    <ChevronRight size={20} />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </section>
+                    
                     {/* Smart Matches Section */}
                     <section className="space-y-6">
                         <div className="flex items-center justify-between px-1">
@@ -182,7 +212,7 @@ export default function UnifiedDashboard() {
                                 <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-200">
                                     <Activity size={24} />
                                 </div>
-                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] italic">System logs will appear here</p>
+                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] italic">No activity yet</p>
                             </CardContent>
                         </Card>
                     </section>
@@ -230,7 +260,7 @@ export default function UnifiedDashboard() {
                                 <div className="h-8 w-8 bg-indigo-600/20 rounded-lg flex items-center justify-center text-indigo-400">
                                     <BrainCircuit size={18} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">AI Outreach Intel</span>
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">AI Insights</span>
                             </div>
                             <p className="text-[11px] text-slate-400 leading-relaxed font-medium italic opacity-90">
                                 {isStartup 

@@ -30,6 +30,7 @@ export function Sidebar() {
     { label: "Connections", href: "/dashboard/network", icon: Users },
     { label: "Messages", href: "/dashboard/chat", icon: MessageSquare },
     { label: "Meetings", href: "/dashboard/meetings", icon: Calendar },
+    { label: "Data Rooms", href: "/dashboard/vdr", icon: ShieldCheck },
     { label: "Saved", href: "/dashboard/saved", icon: Bookmark },
   ];
 

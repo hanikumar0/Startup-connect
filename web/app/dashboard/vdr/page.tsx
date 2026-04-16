@@ -37,6 +37,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function VDRPage() {
     const [user, setUser] = useState<any>(null);
     const [documents, setDocuments] = useState<any[]>([]);
+    const [rooms, setRooms] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
@@ -59,13 +60,17 @@ export default function VDRPage() {
 
     const fetchMyDocuments = async () => {
         try {
-            const response = await apiFetch("/api/vdr/my");
-            const data = await response.json();
-            if (data.success) {
-                setDocuments(data.documents);
-            }
+            // Fetch individual documents (Vault)
+            const docRes = await apiFetch("/api/vdr/startup/me");
+            const docData = await docRes.json();
+            if (docData.success) setDocuments(docData.documents || []);
+
+            // Fetch matched rooms
+            const roomRes = await apiFetch("/api/vdr/my");
+            const roomData = await roomRes.json();
+            if (roomData.success) setRooms(roomData.rooms || []);
         } catch (error) {
-            console.error("Error fetching documents:", error);
+            console.error("Error fetching VDR data:", error);
         } finally {
             setIsLoading(false);
         }
@@ -123,7 +128,7 @@ export default function VDRPage() {
                 >
                     <CircleDashed className="h-12 w-12 text-indigo-600 opacity-20" />
                 </motion.div>
-                <p className="text-[10px] font-black tracking-widest text-slate-400 uppercase italic">Initializing Vault...</p>
+                <p className="text-[10px] font-black tracking-widest text-slate-400 uppercase italic">Loading your vault...</p>
             </div>
         );
     }
@@ -134,20 +139,20 @@ export default function VDRPage() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-12 pb-20"
         >
-            {/* Breadcrumb Console */}
+            {/* Breadcrumb */}
             <div className="flex items-center gap-2 px-1">
-                <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Institutional Secure</span>
+                <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Secure Storage</span>
                 <ChevronRight className="h-3 w-3 text-slate-300" />
-                <span className="text-[10px] font-black tracking-widest text-indigo-600 uppercase">Virtual Data Room</span>
+                <span className="text-[10px] font-black tracking-widest text-indigo-600 uppercase">Data Room</span>
             </div>
 
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
                 <div className="space-y-2">
                     <h1 className="text-7xl font-black text-slate-900 tracking-tighter leading-[0.8] mb-4">
-                        VAULT<span className="text-indigo-600">.</span>CORE
+                        Data <span className="text-indigo-600">Room</span>
                     </h1>
                     <p className="text-xl text-slate-500 font-medium italic max-w-xl">
-                        End-to-end encrypted document intelligence & investor access governance.
+                        Securely share and manage your business documents and investor access.
                     </p>
                 </div>
                 
@@ -157,17 +162,17 @@ export default function VDRPage() {
                         onClick={() => setShowUploadModal(true)}
                     >
                         <Plus className="h-5 w-5" />
-                        <span className="font-bold text-lg">DEPLOY DOCUMENT</span>
+                        <span className="font-bold text-lg">UPLOAD DOCUMENT</span>
                     </Button>
                 </motion.div>
             </div>
 
-            {/* Smart VDR Insights */}
+            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
-                    { label: "Vault Integrity", value: "99.9%", icon: Shield, color: "text-emerald-600", bg: "bg-emerald-50", desc: "Military Grade SSL Overlap" },
-                    { label: "Vault Health", value: "OPTIMAL", icon: Zap, color: "text-amber-600", bg: "bg-amber-50", desc: "No Latency Issues Detected" },
-                    { label: "Engagements", value: "HIGH", icon: TrendingUp, color: "text-indigo-600", bg: "bg-indigo-50", desc: "Active Investor Interest" },
+                    { label: "Security", value: "99.9%", icon: Shield, color: "text-emerald-600", bg: "bg-emerald-50", desc: "Military Grade Protection" },
+                    { label: "System Status", value: "Healthy", icon: Zap, color: "text-amber-600", bg: "bg-amber-50", desc: "All systems operational" },
+                    { label: "Activity", value: "High", icon: TrendingUp, color: "text-indigo-600", bg: "bg-indigo-50", desc: "Active interest in your docs" },
                 ].map((stat, i) => (
                     <motion.div
                         key={i}
@@ -194,16 +199,70 @@ export default function VDRPage() {
                 ))}
             </div>
 
-            <Tabs defaultValue="all" className="w-full">
-                <TabsList className="bg-slate-100/50 p-2 rounded-[24px] mb-10 h-16 w-full lg:w-fit gap-2">
-                    <TabsTrigger value="all" className="rounded-2xl px-8 font-black text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm">INTERNAL STORAGE</TabsTrigger>
+            <Tabs defaultValue="rooms" className="w-full">
+                <TabsList className="bg-slate-100/50 p-2 rounded-[24px] mb-10 h-16 w-full lg:w-fit gap-2 overflow-x-auto no-scrollbar">
+                    <TabsTrigger value="rooms" className="rounded-2xl px-8 font-black text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm">Matched Rooms</TabsTrigger>
+                    <TabsTrigger value="all" className="rounded-2xl px-8 font-black text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm">My Vault</TabsTrigger>
                     <TabsTrigger value="requests" className="rounded-2xl px-8 font-black text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm flex gap-2">
-                        EXTERNAL REQUESTS
+                        Access Requests
                         {documents.some(d => d.accessRequests?.some((r:any)=>r.status==="PENDING")) && (
                             <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                         )}
                     </TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="rooms" className="space-y-10 focus-visible:outline-none">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {rooms.length > 0 ? rooms.map((room, idx) => {
+                            const partner = user?.role === "startup" ? room.investorId : room.startupId;
+                            return (
+                                <motion.div
+                                    key={room._id}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    onClick={() => window.location.href = `/dashboard/vdr/${room.matchId}`}
+                                    className="cursor-pointer"
+                                >
+                                    <Card className="group rounded-[48px] border-none shadow-sm hover:shadow-2xl transition-all duration-700 bg-white overflow-hidden flex flex-col h-full border border-slate-50">
+                                        <CardContent className="p-8 flex flex-col h-full">
+                                            <div className="flex items-start justify-between mb-8">
+                                                <div className="h-16 w-16 rounded-3xl bg-indigo-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                                    <Lock className="h-8 w-8 text-white" />
+                                                </div>
+                                                <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px] px-3">ACTIVE ROOM</Badge>
+                                            </div>
+
+                                            <div className="space-y-2 mb-6">
+                                                <p className="text-[10px] font-black tracking-widest text-slate-400 uppercase">COLLABORATION ROOM</p>
+                                                <h3 className="text-2xl font-black text-slate-900 tracking-tighter line-clamp-1">{partner?.name || "Match Partner"}</h3>
+                                                <p className="text-xs font-bold text-slate-500 italic">With connection established via Mutual Match</p>
+                                            </div>
+
+                                            <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
+                                                <div className="flex -space-x-2">
+                                                    <div className="h-8 w-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[8px] font-bold">You</div>
+                                                    <div className="h-8 w-8 rounded-full border-2 border-white bg-indigo-100 flex items-center justify-center text-[8px] font-bold text-indigo-600">P</div>
+                                                </div>
+                                                <Button variant="ghost" className="text-indigo-600 font-black text-xs gap-2 p-0">
+                                                    ENTER ROOM <ArrowRight size={14} />
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            );
+                        }) : (
+                            <div className="col-span-full py-24 text-center bg-slate-50 rounded-[56px] border-4 border-dashed border-white shadow-inner">
+                                <div className="h-24 w-24 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                                    <Shield className="h-10 w-10 text-slate-200" />
+                                </div>
+                                <h3 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">No Active Rooms</h3>
+                                <p className="text-slate-500 font-medium italic mt-2">Mutual matches will appear here once finalized.</p>
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
 
                 <TabsContent value="all" className="space-y-10 focus-visible:outline-none">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -222,7 +281,7 @@ export default function VDRPage() {
                                             </div>
                                             <Badge variant="secondary" className={`rounded-xl px-4 py-2 font-black text-[9px] uppercase tracking-widest border-none ${doc.isRestricted ? "bg-black text-white" : "bg-indigo-600 text-white"}`}>
                                                 {doc.isRestricted ? <Lock className="h-3 w-3 mr-2" /> : <Unlock className="h-3 w-3 mr-2" />}
-                                                {doc.isRestricted ? "RESTRICTED" : "OPEN VAULT"}
+                                                {doc.isRestricted ? "RESTRICTED" : "OPEN"}
                                             </Badge>
                                         </div>
 
@@ -236,17 +295,17 @@ export default function VDRPage() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <BrainCircuit size={16} className="text-indigo-600" strokeWidth={3} />
-                                                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">AI AGENT ANALYSIS</span>
+                                                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">AI Analysis</span>
                                                     </div>
                                                     <Badge className={`text-[9px] font-black border-none px-3 py-1 ${doc.riskScore > 50 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                        SCORE: {doc.riskScore || 0}%
+                                                        RISK: {doc.riskScore || 0}%
                                                     </Badge>
                                                 </div>
                                                 <p className="text-[12px] text-slate-600 leading-relaxed italic font-medium">
-                                                    "{doc.aiSummary || 'Security sweep confirmed. No anomalies detected in current document structure.'}"
+                                                    "{doc.aiSummary || 'Document analyzed successfully. No critical risks found.'}"
                                                 </p>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {(doc.keyClauses?.length > 0 ? doc.keyClauses : ["Clause Valid", "Encryption Set"]).slice(0, 2).map((clause: any, i: number) => (
+                                                    {(doc.keyClauses?.length > 0 ? doc.keyClauses : ["Valid", "Encrypted"]).slice(0, 2).map((clause: any, i: number) => (
                                                         <span key={i} className="text-[9px] font-black bg-white px-3 py-1.5 rounded-full border border-slate-100 text-slate-600 shadow-sm uppercase tracking-tighter">
                                                             {clause}
                                                         </span>
@@ -257,8 +316,8 @@ export default function VDRPage() {
 
                                         <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-slate-400 italic">SYSTEM STATS</span>
-                                                <span className="text-xs font-bold text-slate-500">{(doc.size / (1024 * 1024)).toFixed(1)} MB • REV_{new Date(doc.createdAt).getFullYear()}_{idx+100}</span>
+                                                <span className="text-[10px] font-black text-slate-400 italic">STATS</span>
+                                                <span className="text-xs font-bold text-slate-500">{(doc.size / (1024 * 1024)).toFixed(1)} MB • {new Date(doc.createdAt).getFullYear()}</span>
                                             </div>
                                             <div className="flex gap-2">
                                                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
@@ -282,13 +341,13 @@ export default function VDRPage() {
                                     <FolderOpen className="h-10 w-10 text-slate-200" />
                                 </div>
                                 <h3 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Vault Empty</h3>
-                                <p className="text-slate-500 font-medium italic mt-2">Zero documents detected in secure storage.</p>
+                                <p className="text-slate-500 font-medium italic mt-2">No documents found in your storage.</p>
                                 <Button
                                     variant="link"
                                     className="mt-4 text-indigo-600 font-black uppercase text-xs tracking-widest gap-2"
                                     onClick={() => setShowUploadModal(true)}
                                 >
-                                    Initialize First Deployment <ArrowRight size={14} />
+                                    Upload Your First Document <ArrowRight size={14} />
                                 </Button>
                             </div>
                         )}
@@ -314,14 +373,14 @@ export default function VDRPage() {
                                                 </div>
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-3">
-                                                        <p className="text-2xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">INQUIRY_{i+1000}</p>
-                                                        <Badge className="bg-indigo-50 text-indigo-600 border-none font-black text-[9px] px-3">PENDING SCAN</Badge>
+                                                        <p className="text-2xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">Access Request</p>
+                                                        <Badge className="bg-indigo-50 text-indigo-600 border-none font-black text-[9px] px-3">PENDING</Badge>
                                                     </div>
                                                     <p className="text-sm font-bold text-slate-500 italic">
-                                                        Target Profile: <span className="text-indigo-600 underline underline-offset-4 decoration-2">{req.email}</span>
+                                                        From: <span className="text-indigo-600 underline underline-offset-4 decoration-2">{req.email}</span>
                                                     </p>
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">
-                                                        REQUESTING ACCESS TO: <span className="text-slate-900">"{req.docName}"</span>
+                                                        WANTS TO VIEW: <span className="text-slate-900">"{req.docName}"</span>
                                                     </p>
                                                 </div>
                                             </div>
@@ -362,8 +421,8 @@ export default function VDRPage() {
                                         <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
                                             <Clock className="h-10 w-10 text-slate-200" />
                                         </div>
-                                        <p className="text-xl font-black text-slate-400 uppercase italic opacity-50 tracking-tighter">Zero Pending Requests</p>
-                                        <p className="text-[11px] font-bold text-slate-500 mt-2 uppercase tracking-widest opacity-70 italic font-medium">Monitoring system for incoming access inquiries...</p>
+                                        <p className="text-xl font-black text-slate-400 uppercase italic opacity-50 tracking-tighter">No Pending Requests</p>
+                                        <p className="text-[11px] font-bold text-slate-500 mt-2 uppercase tracking-widest opacity-70 italic font-medium">Monitoring system for new requests...</p>
                                     </div>
                                 )}
                             </div>
@@ -372,7 +431,7 @@ export default function VDRPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Upload Modal (Simplified & Themed) */}
+            {/* Upload Modal */}
             <AnimatePresence>
                 {showUploadModal && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -392,22 +451,22 @@ export default function VDRPage() {
                             <div className="bg-black p-12 text-white text-center relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500 via-transparent to-transparent pointer-events-none" />
                                 <LockIcon className="h-12 w-12 mx-auto mb-6 text-indigo-500 opacity-50" />
-                                <h1 className="text-5xl font-black tracking-tighter italic mb-2">UPLOAD.CORE</h1>
-                                <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">Institutional Secure Deposition</p>
+                                <h1 className="text-5xl font-black tracking-tighter italic mb-2">Upload File</h1>
+                                <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">Secure Document Storage</p>
                             </div>
                             
                             <div className="p-12 space-y-8">
                                 <div className="space-y-3">
-                                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Document Identifier</Label>
+                                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Document Name</Label>
                                     <Input
                                         className="h-14 rounded-2xl border-slate-100 bg-slate-50/50 font-bold focus:ring-indigo-500 focus:border-indigo-500 px-6"
-                                        placeholder="e.g. CORE_FINANCIALS_FY24"
+                                        placeholder="e.g. Q4 Financials 2024"
                                         value={newDoc.name}
                                         onChange={(e) => setNewDoc({ ...newDoc, name: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Classification Hub</Label>
+                                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Category</Label>
                                     <select
                                         className="w-full h-14 px-6 rounded-2xl border border-slate-100 bg-slate-50/50 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_1.5rem_center] bg-no-repeat"
                                         value={newDoc.category}
@@ -427,8 +486,8 @@ export default function VDRPage() {
                                             <ShieldAlert size={20} className={newDoc.isRestricted ? "text-black" : "text-slate-300"} />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-black text-slate-900 tracking-tight uppercase">Encryption Lockdown</p>
-                                            <p className="text-[10px] font-bold text-slate-400 italic">Toggle between Public and Protected States</p>
+                                            <p className="text-sm font-black text-slate-900 tracking-tight uppercase">Private Access</p>
+                                            <p className="text-[10px] font-bold text-slate-400 italic">If enabled, users must request access first.</p>
                                         </div>
                                     </div>
                                     <div 
@@ -446,9 +505,9 @@ export default function VDRPage() {
                                     <div className="h-16 w-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:-translate-y-2 transition-transform duration-500">
                                         <Upload className="h-8 w-8 text-indigo-600" />
                                     </div>
-                                    <p className="text-sm font-black text-slate-900 tracking-tight uppercase italic mb-1">Select Core Object</p>
+                                    <p className="text-sm font-black text-slate-900 tracking-tight uppercase italic mb-1">Select File</p>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Supports PDF, DOCX (Max 250MB)</p>
-                                    <Input type="file" className="hidden" id="file-upload" />
+                                    <input type="file" className="hidden" id="file-upload" />
                                 </div>
 
                                 <div className="flex gap-4 pt-4">
@@ -457,14 +516,14 @@ export default function VDRPage() {
                                         onClick={() => setShowUploadModal(false)} 
                                         className="h-16 flex-1 rounded-[24px] font-black text-xs uppercase tracking-widest hover:bg-slate-50"
                                     >
-                                        ABORT
+                                        CANCEL
                                     </Button>
                                     <Button 
                                         className="h-16 flex-1 bg-black hover:bg-slate-900 text-white rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200"
                                         disabled={!newDoc.name || isUploading} 
                                         onClick={handleUpload}
                                     >
-                                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "EXECUTE UPLOAD"}
+                                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "UPLOAD NOW"}
                                     </Button>
                                 </div>
                             </div>

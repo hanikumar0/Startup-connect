@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { createNotification } from "../services/notificationService.js";
+import { ensureVDRRoom } from "../services/vdrService.js";
 
 // @desc    Send a connection request
 // @route   POST /api/connections/request
@@ -99,6 +100,31 @@ export const respondToRequest = async (req, res) => {
                 message: `${req.user.name} has accepted your connection request. You can now chat and schedule meetings.`,
                 link: "/dashboard/chat"
             });
+
+            // VDR CREATION HOOK
+            try {
+                const user1 = await User.findById(connection.sender);
+                const user2 = await User.findById(connection.recipient);
+                
+                let startupId, investorId;
+                if (user1.role === "startup") {
+                    startupId = user1._id;
+                    investorId = user2._id;
+                } else if (user2.role === "startup") {
+                    startupId = user2._id;
+                    investorId = user1._id;
+                } else {
+                    // Fallback if roles are same or weird (e.g. admin)
+                    startupId = connection.sender;
+                    investorId = connection.recipient;
+                }
+
+                await ensureVDRRoom(connection._id, startupId, investorId);
+                console.log(`[VDR] Room auto-provisioned for connection ${connection._id}`);
+            } catch (vdrError) {
+                console.error("[VDR Hook Error] Failed to auto-provision VDR:", vdrError.message);
+                // Don't fail the connection acceptance if VDR fails
+            }
         }
 
         res.status(200).json({ success: true, data: connection });

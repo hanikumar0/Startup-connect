@@ -120,11 +120,11 @@ export default function ConnectionsPage() {
             });
             const data = await res.json();
             if (data.success) {
-                toast.success(status === "ACCEPTED" ? "Network access granted" : "Request declined");
+                toast.success(status === "ACCEPTED" ? "Connection accepted" : "Request declined");
                 fetchData();
             }
         } catch (error) {
-            toast.error("Anomalous response intercepted");
+            toast.error("Failed to respond to request");
         } finally {
             setProcessingId(null);
         }
@@ -136,11 +136,11 @@ export default function ConnectionsPage() {
             const res = await apiFetch(`/api/connections/cancel/${id}`, { method: "DELETE" });
             const data = await res.json();
             if (data.success) {
-                toast.success("Transmission aborted");
+                toast.success("Request canceled");
                 fetchData();
             }
         } catch (error) {
-            toast.error("Abort sequence failed");
+            toast.error("Failed to cancel request");
         } finally {
             setProcessingId(null);
         }
@@ -152,11 +152,11 @@ export default function ConnectionsPage() {
             const res = await apiFetch(`/api/connections/${id}`, { method: "DELETE" });
             const data = await res.json();
             if (data.success) {
-                toast.success("Connection dissolved");
+                toast.success("Connection removed");
                 fetchData();
             }
         } catch (error) {
-            toast.error("Termination error");
+            toast.error("Failed to remove connection");
         } finally {
             setProcessingId(null);
         }
@@ -393,7 +393,7 @@ function ConnectionCard({
                         )}
                         {type === "outgoing" && (
                              <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[8px] tracking-[0.1em] uppercase px-2 h-5 flex items-center gap-1 italic">
-                             <Send size={10} /> QUEUED
+                             <Send size={10} /> PENDING
                           </Badge>
                         )}
                         {type === "connected" && (
@@ -457,22 +457,32 @@ function ConnectionCard({
                             {isProcessing ? <Loader2 className="animate-spin h-4 w-4" /> : <><Trash2 size={14} /> CANCEL REQUEST</>}
                         </Button>
                     ) : (
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                                <Button 
+                                    className="flex-1 h-11 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-200 transition-all gap-2"
+                                    asChild
+                                >
+                                    <Link href={`/dashboard/chat?id=${user.conversationId || ''}`}>
+                                        <MessageSquare size={14} /> CHAT
+                                    </Link>
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    className="h-11 w-11 p-0 border-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                    onClick={onRemove}
+                                    disabled={isProcessing}
+                                >
+                                    <UserMinus size={16} />
+                                </Button>
+                            </div>
                             <Button 
-                                className="flex-1 h-11 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-200 transition-all gap-2"
+                                className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all gap-2"
                                 asChild
                             >
-                                <Link href={`/dashboard/chat?id=${user.conversationId || ''}`}>
-                                    <MessageSquare size={14} /> CHAT
+                                <Link href={`/dashboard/vdr/${id}`}>
+                                    <ShieldCheck size={14} /> DATA ROOM
                                 </Link>
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                className="h-11 w-11 p-0 border-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                onClick={onRemove}
-                                disabled={isProcessing}
-                            >
-                                <UserMinus size={16} />
                             </Button>
                         </div>
                     )}

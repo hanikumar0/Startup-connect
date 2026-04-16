@@ -3,6 +3,11 @@ import jwt from "jsonwebtoken";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import Connection from "../models/Connection.js";
+import VDRRoom from "../models/VDRRoom.js";
+import VDRMessage from "../models/VDRMessage.js";
+import User from "../models/User.js";
+import { encryptMessage } from "../utils/vdrEncryption.js";
+
 let io;
 
 const setupSockets = (server) => {
@@ -260,6 +265,101 @@ const setupSockets = (server) => {
         socket.on("disconnect", (reason) => {
             console.log(`👋 User disconnected: ${socket.id} (Reason: ${reason})`);
             // Cleanup meeting states if necessary
+        });
+    });
+
+    // --- VDR NAMESPACE ---
+    const vdrNamespace = io.of("/vdr");
+
+    vdrNamespace.use((socket, next) => {
+        const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+        if (!token) return next(new Error("Authentication required"));
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            socket.userId = decoded.id;
+            next();
+        } catch (err) {
+            next(new Error("Invalid token"));
+        }
+    });
+
+    vdrNamespace.on("connection", (socket) => {
+        const userId = socket.userId;
+        console.log(`🔐 [Socket /vdr] User connected: ${userId}`);
+
+        socket.on("join_room", async (roomId) => {
+            try {
+                const room = await VDRRoom.findById(roomId);
+                if (!room) return socket.emit("error", { message: "Room not found" });
+
+                // Security: Verify user is part of room
+                if (room.startupId.toString() !== userId && room.investorId.toString() !== userId) {
+                    return socket.emit("error", { message: "Unauthorized access to this room" });
+                }
+
+                socket.join(roomId);
+                console.log(`[Socket /vdr] User ${userId} joined room ${roomId}`);
+            } catch (error) {
+                console.error("[Socket /vdr] join_room error:", error.message);
+            }
+        });
+
+        socket.on("send_message", async (data) => {
+            const { roomId, message } = data;
+            try {
+                const room = await VDRRoom.findById(roomId);
+                if (!room) return;
+
+                // Security: Verify user is part of room
+                if (room.startupId.toString() !== userId && room.investorId.toString() !== userId) return;
+
+                const user = await User.findById(userId);
+                const role = user.role === "startup" ? "startup" : "investor";
+
+                // Encrypt for storage
+                const encrypted = encryptMessage(message, room.encryptionKey);
+
+                const vdrMsg = await VDRMessage.create({
+                    roomId,
+                    senderId: userId,
+                    senderRole: role,
+                    message: encrypted
+                });
+
+                // Emit back to room (decrypted for recipients)
+                vdrNamespace.to(roomId).emit("receive_message", {
+                    _id: vdrMsg._id,
+                    roomId,
+                    senderId: userId,
+                    senderRole: role,
+                    message: message, // Send raw message to room participants
+                    createdAt: vdrMsg.createdAt
+                });
+
+                console.log(`[Socket /vdr] Message sent in room ${roomId}`);
+            } catch (error) {
+                console.error("[Socket /vdr] send_message error:", error.message);
+            }
+        });
+
+        socket.on("typing", ({ roomId, isTyping }) => {
+            socket.to(roomId).emit("user_typing", { 
+                senderId: userId, 
+                isTyping 
+            });
+        });
+
+        socket.on("read_receipt", async ({ roomId, messageId }) => {
+            try {
+                await VDRMessage.findByIdAndUpdate(messageId, { readStatus: true });
+                socket.to(roomId).emit("message_read", { messageId });
+            } catch (error) {
+                console.error("[Socket /vdr] read_receipt error:", error.message);
+            }
+        });
+
+        socket.on("disconnect", () => {
+            console.log(`👋 [Socket /vdr] User disconnected: ${userId}`);
         });
     });
 

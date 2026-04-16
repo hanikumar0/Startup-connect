@@ -44,6 +44,7 @@ import passport from "./config/passport.js";
 import mongoose from "mongoose";
 import AppError from "./utils/AppError.js";
 
+// Force restart trigger
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
 
