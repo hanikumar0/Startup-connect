@@ -12,6 +12,7 @@ import { WarmIntroModal } from "@/components/network/WarmIntroModal";
 import { useAuthStore } from "@/lib/store";
 import { useEffect, useState } from "react";
 import { apiFetchJSON } from "@/lib/api";
+import { toast } from "sonner";
 
 interface InvestorCardProps {
   investor: any;
@@ -126,9 +127,28 @@ export function InvestorCard({ investor, onSave, isSaved }: InvestorCardProps) {
                         Warm Intro
                     </Button>
                 )}
-                <Button className={cn("h-10 rounded-xl bg-zinc-900 text-white font-bold text-[10px] uppercase tracking-widest hover:bg-zinc-800 transition-all", user?.role !== "startup" && "col-span-2")}>
-                    Connect
-                </Button>
+                <div className="grid grid-cols-3 gap-2">
+                    <Button 
+                        variant="outline"
+                        onClick={async () => {
+                            try {
+                                const res = await apiFetchJSON("/api/crm/add", {
+                                    method: "POST",
+                                    body: JSON.stringify({ targetId: investor._id })
+                                });
+                                if (res.success) toast.success("Added to Fundraising CRM");
+                            } catch (err) {
+                                toast.error("Failed to add to CRM");
+                            }
+                        }}
+                        className="h-10 rounded-xl border-zinc-100 bg-zinc-50 text-zinc-600 font-bold text-[10px] uppercase tracking-widest hover:bg-zinc-950 hover:text-white transition-all shadow-sm"
+                    >
+                        CRM
+                    </Button>
+                    <Button className={cn("h-10 rounded-xl bg-zinc-900 text-white font-bold text-[10px] uppercase tracking-widest hover:bg-zinc-800 transition-all", user?.role === "startup" ? "col-span-2" : "col-span-3")}>
+                        Connect
+                    </Button>
+                 </div>
              </div>
           </div>
         </CardContent>

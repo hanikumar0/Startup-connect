@@ -29,6 +29,7 @@ import {
 import { FundingReadinessCard } from "@/components/cards/FundingReadinessCard";
 import { TopMatchesWidget } from "@/components/dashboard/TopMatchesWidget";
 import { IntroRequestsWidget } from "@/components/dashboard/IntroRequestsWidget";
+import CRMStatsWidget from "@/components/crm/CRMStatsWidget";
 import { useAuthStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -151,6 +152,17 @@ export default function UnifiedDashboard() {
                     );
                 })}
             </div>
+
+            {/* CRM Analytics Integration */}
+            <section className="space-y-6">
+                <div className="flex items-center justify-between px-1">
+                    <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                        <Target size={12} className="text-indigo-600" /> Pipeline Intelligence
+                    </h3>
+                    <Link href="/dashboard/crm" className="text-[10px] font-bold text-indigo-600 hover:opacity-70 transition-opacity">View Full CRM</Link>
+                </div>
+                <CRMStatsWidget role={user?.role?.toLowerCase() as any} />
+            </section>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 

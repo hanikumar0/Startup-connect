@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
   Search, 
+  Target,
   Users,
   MessageSquare, 
   Calendar, 
@@ -27,6 +28,7 @@ export function Sidebar() {
 
   const mainNavItems = [
     { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Relationship CRM", href: "/dashboard/crm", icon: Target },
     { label: "Discover", href: "/dashboard/discover", icon: Search },
     { label: "Connections", href: "/dashboard/network", icon: Users },
     { label: "Messages", href: "/dashboard/chat", icon: MessageSquare },
