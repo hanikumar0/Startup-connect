@@ -62,11 +62,26 @@ export default function SettingsPage() {
         investmentRange: ""
     });
 
+    // Intelligence Data
+    const [intelligence, setIntelligence] = useState<any>({
+        profileScore: 0,
+        visibilityScore: 0,
+        suggestions: [],
+        trustBadges: [],
+        recentUpdates: [],
+        achievements: []
+    });
+
+
     // Instant e-KYC States
     const [aadhaarOTP, setAadhaarOTP] = useState("");
     const [isAadhaarOTPSent, setIsAadhaarOTPSent] = useState(false);
     const [aadhaarClientId, setAadhaarClientId] = useState("");
     const [isVerifyingInstant, setIsVerifyingInstant] = useState(false);
+
+    // Co-founder states
+    const [coFounderEmail, setCoFounderEmail] = useState("");
+    const [isIntegratingCoFounder, setIsIntegratingCoFounder] = useState(false);
 
     const handleSendAadhaarOTP = async () => {
         if (!kycFormData.idNumber || kycFormData.idNumber.length !== 12) {
@@ -148,7 +163,36 @@ export default function SettingsPage() {
             setUser((prev: any) => ({ ...prev, ...globalUser }));
         }
         fetchKYCStatus();
+        fetchIntelligence();
     }, [globalUser]);
+
+    // AUTO-SAVE LOGIC
+    useEffect(() => {
+        if (!user || !user.email) return;
+        
+        const delayDebounceFn = setTimeout(() => {
+            // Only auto-save if something meaningful changed compared to globalUser
+            const hasChanged = JSON.stringify(user) !== JSON.stringify(globalUser);
+            if (hasChanged && !isLoading) {
+                console.log("Auto-saving profile changes...");
+                handleSave();
+            }
+        }, 2000);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [user]);
+
+    const fetchIntelligence = async () => {
+        try {
+            const res = await apiFetch("/api/users/profile");
+            const data = await res.json();
+            if (data.success && data.intelligence) {
+                setIntelligence(data.intelligence);
+            }
+        } catch (err) {
+            console.error("Intelligence fetch error:", err);
+        }
+    };
 
     const fetchKYCStatus = async () => {
         setIsFetchingKYC(true);
@@ -165,6 +209,32 @@ export default function SettingsPage() {
             console.error("KYC Fetch error:", error);
         } finally {
             setIsFetchingKYC(false);
+        }
+    };
+
+    const handleConnectCoFounder = async () => {
+        if (!coFounderEmail) return;
+        setIsIntegratingCoFounder(true);
+        try {
+            const res = await apiFetch("/api/users/co-founder/integrate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: coFounderEmail })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("Co-founder integration successful!");
+                setCoFounderEmail("");
+                // Update local state to show new co-founder
+                setUser({ ...user, coFounders: data.coFounders });
+                updateUser({ ...globalUser, coFounders: data.coFounders });
+            } else {
+                alert(data.message || "Integration failed");
+            }
+        } catch (error) {
+            console.error("Co-founder integration error:", error);
+        } finally {
+            setIsIntegratingCoFounder(false);
         }
     };
 
@@ -262,12 +332,74 @@ export default function SettingsPage() {
                         <CardTitle className="text-xl font-black text-slate-900 italic tracking-tight">Institutional Profile</CardTitle>
                         <CardDescription className="text-xs font-medium text-slate-400 mt-1">Unified identification and branding for {user.role} accounts.</CardDescription>
                     </div>
-                    <Badge className="bg-white border-slate-200 text-slate-900 font-black text-[10px] uppercase h-8 px-4 shadow-sm italic">
-                        {isStartup ? `Stage: ${user.stage || 'Idea'}` : (isInvestor ? `Tier: ${user.investorStage || 'New'}` : user.role)}
-                    </Badge>
+                    <div className="flex items-center gap-4">
+                        <div className="flex flex-col items-end">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visibility Rank</span>
+                             <Badge className="bg-indigo-600 border-none text-white font-black text-[10px] uppercase h-8 px-4 shadow-xl italic mt-1">
+                                Top {100 - Math.min(intelligence.visibilityScore, 99)}% Baseline
+                             </Badge>
+                        </div>
+                        <Badge className="bg-white border-slate-200 text-slate-900 font-black text-[10px] uppercase h-8 px-4 shadow-sm italic">
+                            {isStartup ? `Stage: ${user.stage || 'Idea'}` : (isInvestor ? `Tier: ${user.investorStage || 'New'}` : user.role)}
+                        </Badge>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-10 space-y-12">
+                {/* Intelligence Overview Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card className="bg-slate-900 border-none rounded-[24px] p-6 text-white shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700">
+                             <TrendingUp size={80} />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Profile Authority</p>
+                        <h4 className="text-4xl font-black italic tracking-tighter">{intelligence.profileScore}/100</h4>
+                        <div className="mt-4 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                            <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${intelligence.profileScore}%` }}
+                                className="h-full bg-indigo-500" 
+                            />
+                        </div>
+                    </Card>
+
+                    <Card className="bg-white border-2 border-slate-50 rounded-[24px] p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Trust Signals</p>
+                             <div className="flex flex-wrap gap-2">
+                                {intelligence.trustBadges.length > 0 ? intelligence.trustBadges.map((badge: string, i: number) => (
+                                    <Badge key={i} className="bg-emerald-50 text-emerald-600 border-none text-[9px] font-black uppercase px-2 py-1 italic">
+                                        ★ {badge}
+                                    </Badge>
+                                )) : (
+                                    <p className="text-[10px] font-medium text-slate-300 italic">No verified signals yet.</p>
+                                )}
+                             </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-slate-50">
+                             <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest flex items-center gap-2">
+                                <Zap size={12} /> {intelligence.visibilityScore > 50 ? "Priority Discovery Active" : "Standard Discovery"}
+                             </p>
+                        </div>
+                    </Card>
+
+                    <Card className="bg-indigo-50 border-none rounded-[24px] p-6 shadow-inner flex flex-col justify-between">
+                         <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-4">AI Suggestions</p>
+                            <div className="space-y-3">
+                                {intelligence.suggestions?.length > 0 ? intelligence.suggestions.map((s: string, i: number) => (
+                                    <div key={i} className="flex items-start gap-2">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
+                                        <p className="text-[10px] font-bold text-slate-700 italic leading-tight">{s}</p>
+                                    </div>
+                                )) : (
+                                    <p className="text-[10px] font-medium text-indigo-300 italic">Profile is fully optimized.</p>
+                                )}
+                            </div>
+                         </div>
+                    </Card>
+                </div>
+
                 {/* Visual Identity Section */}
                 <div className="flex flex-col sm:flex-row items-center gap-8">
                     <div className="relative group">
@@ -361,7 +493,35 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Role-Specific Content Area (In Profile Tab) */}
+                 {/* Profile Timeline Section */}
+                <div className="pt-8 border-t border-slate-50">
+                    <div className="flex items-center justify-between mb-8">
+                         <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[5px] italic">Recent Updates Timeline</h4>
+                         <Badge variant="outline" className="text-[9px] uppercase font-black text-slate-400 border-slate-100">AI Tracked</Badge>
+                    </div>
+                    <div className="space-y-4">
+                        {intelligence.recentUpdates?.length > 0 ? intelligence.recentUpdates.slice(0, 3).map((upd: any, i: number) => (
+                            <div key={i} className="flex items-center gap-6 p-4 rounded-2xl bg-slate-50/50 border border-slate-100/50 hover:bg-white hover:shadow-lg transition-all group">
+                                <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm font-black text-xs">
+                                    {new Date(upd.date).getDate()}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[11px] font-black text-slate-900 uppercase italic opacity-80">{upd.updateType || "Activity"}</p>
+                                    <p className="text-[10px] font-bold text-slate-400">{upd.description}</p>
+                                </div>
+                                <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+                                    {new Date(upd.date).toLocaleDateString()}
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="text-center py-10">
+                                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[3px] italic">No activity detected on timeline</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Market Positioning Area */}
                 <div className="pt-8 border-t border-slate-50">
                     <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-6 block text-center">Market Positioning</Label>
                     <div className={`flex flex-wrap gap-3 justify-center ${isCooldownActive(user.lastFocusUpdate) ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -712,14 +872,27 @@ export default function SettingsPage() {
                             <div className="flex gap-4">
                                 <div className="relative flex-1">
                                     <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <Input disabled placeholder="founder@acme.ai" className="h-12 pl-12 border-slate-50 bg-slate-50/50 rounded-xl text-sm font-bold opacity-60" />
+                                    <Input 
+                                        value={coFounderEmail}
+                                        onChange={(e) => setCoFounderEmail(e.target.value)}
+                                        placeholder="founder@acme.ai" 
+                                        className="h-12 pl-12 border-slate-100 bg-white rounded-xl text-sm font-bold" 
+                                    />
                                 </div>
-                                <Button disabled className="h-12 px-8 bg-slate-100 text-slate-400 rounded-xl font-black uppercase text-[10px] tracking-widest">Connect</Button>
+                                <Button 
+                                    onClick={handleConnectCoFounder}
+                                    disabled={isIntegratingCoFounder || !coFounderEmail}
+                                    className="h-12 px-8 bg-indigo-600 text-white hover:bg-zinc-950 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all"
+                                >
+                                    {isIntegratingCoFounder ? <Loader2 className="h-4 w-4 animate-spin" /> : "Connect"}
+                                </Button>
                             </div>
                         </div>
                         <div className="space-y-4">
                             <p className="text-[10px] font-black text-slate-300 uppercase tracking-[4px] px-1 italic">Active Founders</p>
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            
+                            {/* Primary User */}
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-xl transition-all">
                                  <div className="flex items-center gap-4">
                                     <div className="h-12 w-12 bg-white border-2 border-slate-100 rounded-2xl flex items-center justify-center text-indigo-600 text-xl font-black italic">
                                         {user.name?.charAt(0)}
@@ -731,6 +904,22 @@ export default function SettingsPage() {
                                  </div>
                                  <Badge className="bg-indigo-600 text-white font-black text-[9px] uppercase tracking-[3px] h-6 px-3 italic">HODL</Badge>
                             </div>
+
+                            {/* Linked Co-Founders */}
+                            {user.coFounders?.map((email: string, idx: number) => (
+                                <div key={idx} className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-between group hover:bg-white hover:shadow-xl transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-12 w-12 bg-white border border-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
+                                            <Users size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-slate-900 leading-none">{email.split('@')[0]}</p>
+                                            <p className="text-[9px] text-indigo-400 font-black uppercase tracking-widest mt-1">{email}</p>
+                                        </div>
+                                    </div>
+                                    <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-indigo-200 text-indigo-600 italic">Linked</Badge>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 ) : (

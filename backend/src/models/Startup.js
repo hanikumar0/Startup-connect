@@ -155,6 +155,62 @@ const startupSchema = new mongoose.Schema(
         boostUntil: {
             type: Date,
         },
+        profileScore: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 100
+        },
+        visibilityScore: {
+            type: Number,
+            default: 0
+        },
+        achievements: [{
+            title: String,
+            date: Date,
+            type: { type: String, enum: ["Certification", "Award", "Milestone", "Other"] }
+        }],
+        recentUpdates: [{
+            updateType: String,
+            description: String,
+            date: { type: Date, default: Date.now }
+        }],
+        trustBadges: [String],
+        lastAIPulled: { type: Date },
+
+        // AI Funding Readiness Score Fields
+        fundingScore: { type: Number, default: 0 },
+        fundingStage: { 
+            type: String, 
+            enum: ["Not Ready", "Early Progress", "Pre-Seed Ready", "Seed Ready", "Series A Ready"], 
+            default: "Not Ready" 
+        },
+        scoreBreakdown: {
+            profile: { type: Number, default: 0 },
+            traction: { type: Number, default: 0 },
+            team: { type: Number, default: 0 },
+            deck: { type: Number, default: 0 },
+            metrics: { type: Number, default: 0 }
+        },
+        scoreReasons: [String],
+        aiSuggestions: [String],
+        lastCalculatedAt: { type: Date },
+
+        // Extended Business Metrics for Analysis
+        metrics: {
+            monthlyActiveUsers: { type: Number, default: 0 },
+            dailyActiveUsers: { type: Number, default: 0 },
+            customers: { type: Number, default: 0 },
+            mrr: { type: Number, default: 0 },
+            arr: { type: Number, default: 0 },
+            retentionRate: { type: Number, default: 0 },
+            waitlistCount: { type: Number, default: 0 },
+            cac: { type: Number, default: 0 }, // Customer Acquisition Cost
+            ltv: { type: Number, default: 0 }, // Lifetime Value
+            burnRate: { type: Number, default: 0 },
+            runwayMonths: { type: Number, default: 0 },
+            grossMargin: { type: Number, default: 0 }
+        }
     },
     { timestamps: true }
 );

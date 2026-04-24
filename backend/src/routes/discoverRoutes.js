@@ -5,7 +5,9 @@ import {
     discoverExternal, 
     getRegisteredUsers,
     globalSearch, 
-    getDiscoveryStats 
+    getDiscoveryStats,
+    searchInternal,
+    searchGlobal 
 } from "../controllers/discoverController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -28,5 +30,7 @@ router.get("/upload/leads", (req, res) => { req.query.source = "CSV"; discoverEx
 router.get("/uploaded/external", (req, res) => { req.query.source = "Uploaded"; discoverExternal(req, res); });
 
 router.get("/search", globalSearch);
+router.get("/search/internal", searchInternal);
+router.get("/search/global", searchGlobal);
 
 export default router;

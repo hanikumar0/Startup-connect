@@ -13,7 +13,7 @@ const savedSchema = new mongoose.Schema(
         },
         targetType: {
             type: String,
-            enum: ["startup", "investor", "meeting"],
+            enum: ["startup", "investor", "meeting", "intelligence"],
             required: true,
         },
         isFavorite: {

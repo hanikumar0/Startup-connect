@@ -13,7 +13,8 @@ import {
     submitVerification,
     updatePitchDeck,
     getMyConnections,
-    updateUserProfile
+    updateUserProfile,
+    integrateCoFounder
 } from "../controllers/userController.js";
 import { getRecommendations } from "../controllers/recommendationController.js";
 
@@ -22,6 +23,7 @@ const router = express.Router();
 router.get("/profile", protect, getMyProfile);
 router.put("/profile", protect, updateUserProfile);
 router.get("/stats", protect, getDashboardStats);
+router.post("/co-founder/integrate", protect, integrateCoFounder);
 router.get("/discover", protect, getDiscoverableProfiles);
 router.get("/notifications", protect, getNotifications);
 router.put("/notifications/:id", protect, markNotificationRead);

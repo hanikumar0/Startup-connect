@@ -1,5 +1,6 @@
 import Startup from "../models/Startup.js";
 import User from "../models/User.js";
+import { calculateReadinessScore } from "../services/fundingScoreService.js";
 
 // @desc    Create a new startup profile
 // @route   POST /api/startup/create
@@ -17,6 +18,13 @@ export const createStartup = async (req, res) => {
         });
 
         await User.findByIdAndUpdate(userId, { onboardingCompleted: true });
+        
+        // Trigger Score Calculation
+        try {
+            await calculateReadinessScore(startup._id);
+        } catch (err) {
+            console.error("Auto calculation failed on creation", err);
+        }
 
         res.status(201).json({ success: true, data: startup });
     } catch (error) {

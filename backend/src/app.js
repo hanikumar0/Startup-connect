@@ -9,6 +9,8 @@ import mongoSanitize from "express-mongo-sanitize";
 import logger from "./config/logger.js";
 import cron from "node-cron";
 import { runMasterIngestion } from "./services/externalIngestionService.js";
+import { initIntelligenceScheduler } from "./intelligence/scheduler.js";
+import { initNewsScheduler } from "./news/news.scheduler.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import startupRoutes from "./routes/startupRoutes.js";
@@ -40,6 +42,11 @@ import externalRoutes from "./routes/externalRoutes.js";
 import ingestionRoutes from "./routes/ingestionRoutes.js";
 import networkRoutes from "./routes/networkRoutes.js";
 import kycRoutes from "./routes/kycRoutes.js";
+import intelligenceRoutes from "./routes/intelligenceRoutes.js";
+import newsRoutes from "./routes/newsRoutes.js";
+import fundingScoreRoutes from "./routes/fundingScoreRoutes.js";
+import fitScoreRoutes from "./routes/fitScoreRoutes.js";
+import introRoutes from "./routes/introRoutes.js";
 import passport from "./config/passport.js";
 import mongoose from "mongoose";
 import AppError from "./utils/AppError.js";
@@ -155,6 +162,12 @@ app.use("/api/external", externalRoutes);
 app.use("/api/ingestion", ingestionRoutes);
 app.use("/api/network", networkRoutes);
 app.use("/api/kyc", kycRoutes);
+app.use("/api/intelligence", intelligenceRoutes);
+app.use("/api/events", intelligenceRoutes);
+app.use("/api/news", newsRoutes);
+app.use("/api/funding-score", fundingScoreRoutes);
+app.use("/api/ai/fit-score", fitScoreRoutes);
+app.use("/api/intros", introRoutes);
 
 // Error Handling
 app.all("*", (req, res, next) => {
@@ -198,5 +211,7 @@ cron.schedule("0 */12 * * *", () => {
 
 // Immediate Background Fetch on Startup for Initial Population
 runMasterIngestion().catch(err => logger.error({ err }, "Startup: Master Ingestion failed"));
+initIntelligenceScheduler();
+initNewsScheduler();
 
 export default app;

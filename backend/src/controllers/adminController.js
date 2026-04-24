@@ -21,6 +21,7 @@ export const getDashboardStats = async (req, res) => {
         const activeUsersCount = await User.countDocuments({ status: "active" });
         const totalStartups = await Startup.countDocuments();
         const totalInvestors = await Investor.countDocuments();
+        const totalMatches = await Match.countDocuments();
         
         const totalMeetings = await Meeting.countDocuments();
         const totalMessages = await Message.countDocuments();
@@ -61,7 +62,28 @@ export const getDashboardStats = async (req, res) => {
                 { date: 'Mar 15', count: 45 },
                 { date: 'Apr 1', count: 120 },
                 { date: 'Apr 7', count: totalMeetings },
-            ]
+            ],
+            readiness: await Startup.aggregate([
+                { $match: { fundingScore: { $gt: 0 } } },
+                {
+                    $group: {
+                        _id: "$industry",
+                        avgScore: { $avg: "$fundingScore" },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { avgScore: -1 } }
+            ]),
+            matchTrends: await Match.aggregate([
+                {
+                    $group: {
+                        _id: "$category",
+                        count: { $sum: 1 },
+                        avgScore: { $avg: "$score" }
+                    }
+                },
+                { $sort: { count: -1 } }
+            ])
         };
 
         res.status(200).json({
@@ -71,6 +93,7 @@ export const getDashboardStats = async (req, res) => {
                 activeUsersCount,
                 totalStartups,
                 totalInvestors,
+                totalMatches,
                 totalMeetings,
                 totalMessages,
                 totalSubscriptions,

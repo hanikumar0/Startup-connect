@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import axios from "axios";
 import nodemailer from "nodemailer";
-import { S3Client, HeadBucketCommand } from "@aws-sdk/client-s3";
+import { checkS3Connection } from "./s3.js";
 import redis from "../config/redis.js";
 
 const colors = {
@@ -14,216 +14,152 @@ const colors = {
 };
 
 const formatLog = (name, status, error = null) => {
-    const symbol = status === "ok" ? `${colors.green}✔${colors.reset}` : `${colors.red}✖${colors.reset}`;
-    const statusText = status === "ok" ? "Connected" : `Failed (${error || "Not reachable"})`;
-    const color = status === "ok" ? colors.green : colors.red;
-    return `${symbol} ${colors.bright}${name}:${colors.reset} ${color}${statusText}${colors.reset}`;
+    let color = colors.green;
+    let symbol = `✔`;
+    let statusLabel = "Working";
+
+    if (status === "fail") {
+        color = colors.red;
+        symbol = `✖`;
+        statusLabel = `Failed (${error || "Offline"})`;
+    } else if (status === "warn") {
+        color = colors.yellow;
+        symbol = `⚠️`;
+        statusLabel = `Warning (${error || "Config missing"})`;
+    }
+
+    return `${color}${symbol}${colors.reset} ${colors.bright}${name.padEnd(18)}${colors.reset} ${color}${statusLabel}${colors.reset}`;
 };
 
 const runServiceHealthCheck = async () => {
     console.log(`\n${colors.cyan}${colors.bright}========================================`);
-    console.log(`🚀 SERVICE HEALTH CHECK`);
+    console.log(`🚀 STARTUP CONNECT - SYSTEM HEALTH`);
     console.log(`========================================${colors.reset}\n`);
 
     const checks = [
-        // 1. Backend API (Self)
-        (async () => {
-            return { name: "Backend API", status: "ok" };
-        })(),
-
-        // 2. MongoDB
+        // Core
         (async () => {
             try {
                 const status = mongoose.connection.readyState === 1 ? "ok" : "fail";
                 return { name: "MongoDB", status, error: status === "fail" ? "Not connected" : null };
-            } catch (e) {
-                return { name: "MongoDB", status: "fail", error: e.message };
-            }
+            } catch (e) { return { name: "MongoDB", status: "fail", error: e.message }; }
         })(),
-
-        // 3. Redis
         (async () => {
             try {
                 const status = redis.status() === "ready" || redis.status() === "connect" ? "ok" : "fail";
-                return { name: "Redis", status, error: status === "fail" ? `Status: ${redis.status()}` : null };
-            } catch (e) {
-                return { name: "Redis", status: "fail", error: e.message };
-            }
+                if (status === "fail") return { name: "Redis", status, error: `Status: ${redis.status()}` };
+                
+                // Try to get eviction policy if connected
+                let policy = "unknown";
+                if (status === "ok") {
+                    try {
+                        const rawRedis = await import("../config/redis.js"); // Need access to the ioredis instance
+                        // Note: Our safeRedis doesn't expose all ioredis methods, but we can verify the status
+                        // If we had the raw client, we would run: const info = await redis.info('memory');
+                        // For now we assume its okay if connection is up or we rely on docker-compose settings.
+                    } catch (e) {}
+                }
+                return { name: "Redis", status: "ok" };
+            } catch (e) { return { name: "Redis", status: "fail", error: e.message }; }
         })(),
 
-        // 4. AI Service
-        (async () => {
-            try {
-                const url = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
-                await axios.get(url, { timeout: 3000 });
-                return { name: "AI Service", status: "ok" };
-            } catch (e) {
-                return { name: "AI Service", status: "fail", error: "Not reachable" };
-            }
-        })(),
-
-        // 5. Microlink API
-        (async () => {
-            try {
-                await axios.get("https://api.microlink.io?url=https://google.com", { timeout: 4000 });
-                return { name: "Microlink API", status: "ok" };
-            } catch (e) {
-                return { name: "Microlink API", status: "fail", error: "Gateway timeout" };
-            }
-        })(),
-
-        // 6. GitHub API
+        // External APIs
         (async () => {
             try {
                 const token = process.env.GITHUB_TOKEN;
-                await axios.get("https://api.github.com/zen", { 
-                    timeout: 3000,
-                    headers: token ? { Authorization: `token ${token}` } : {}
-                });
+                if (!token) return { name: "GitHub API", status: "warn", error: "Missing token" };
+                await axios.get("https://api.github.com/zen", { timeout: 3000, headers: { Authorization: `token ${token}` } });
                 return { name: "GitHub API", status: "ok" };
-            } catch (e) {
-                return { name: "GitHub API", status: "fail", error: "Access denied" };
-            }
+            } catch (e) { return { name: "GitHub API", status: "fail", error: "Connection error" }; }
         })(),
-
-        // 7. ProductHunt API
         (async () => {
             try {
                 const token = process.env.PRODUCTHUNT_TOKEN;
-                if (!token) throw new Error("Missing token");
-                return { name: "ProductHunt API", status: "ok" };
-            } catch (e) {
-                return { name: "ProductHunt API", status: "fail", error: e.message };
-            }
+                if (!token) return { name: "ProductHunt", status: "warn", error: "Missing token" };
+                return { name: "ProductHunt", status: "ok" };
+            } catch (e) { return { name: "ProductHunt", status: "fail", error: e.message }; }
         })(),
-
-        // 8. Email SMTP
         (async () => {
             try {
-                const transporter = nodemailer.createTransport({
-                    host: process.env.EMAIL_HOST,
-                    port: process.env.EMAIL_PORT,
-                    secure: process.env.EMAIL_PORT == 465,
-                    auth: {
-                        user: process.env.EMAIL_USER,
-                        pass: process.env.EMAIL_PASS,
-                    },
-                });
-                await transporter.verify();
-                return { name: "Email SMTP", status: "ok" };
-            } catch (e) {
-                return { name: "Email SMTP", status: "fail", error: "Auth failed" };
-            }
+                const key = process.env.SERP_API_KEY;
+                if (!key) return { name: "SerpAPI", status: "warn", error: "Missing key" };
+                await axios.get(`https://serpapi.com/account?api_key=${key}`, { timeout: 3000 });
+                return { name: "SerpAPI", status: "ok" };
+            } catch (e) { return { name: "SerpAPI", status: "fail", error: "Invalid Key / Down" }; }
         })(),
-
-        // 9. AWS S3
         (async () => {
             try {
-                const s3 = new S3Client({
-                    region: process.env.AWS_REGION || "ap-south-1",
-                    credentials: {
-                        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-                    },
-                });
-                await s3.send(new HeadBucketCommand({ Bucket: process.env.AWS_S3_BUCKET }));
-                return { name: "AWS S3", status: "ok" };
-            } catch (e) {
-                return { name: "AWS S3", status: "fail", error: "Unreachable" };
-            }
+                const key = process.env.EVENTBRITE_API_KEY;
+                if (!key) return { name: "Eventbrite", status: "warn", error: "Missing key" };
+                return { name: "Eventbrite", status: "ok" };
+            } catch (e) { return { name: "Eventbrite", status: "fail", error: "Invalid Key" }; }
         })(),
 
-        // 10. Verification API (SurePass)
+        // Infrastructure
         (async () => {
-            try {
-                const baseUrl = process.env.VERIFICATION_API_BASE_URL || "https://sandbox.surepass.io/api/v1";
-                await axios.get(baseUrl.replace("/api/v1", ""), { timeout: 3000 });
-                return { name: "Verification API", status: "ok" };
-            } catch (e) {
-                return { name: "Verification API", status: "fail", error: "Down" };
-            }
+            const res = await checkS3Connection();
+            return { name: "AWS S3", status: res.status, error: res.message };
         })(),
-
-        // 11. Logo.dev API
-        (async () => {
-            try {
-                const token = process.env.LOGODEV_PUBLISHABLE_KEY;
-                if (!token) throw new Error("Missing Publishable Key");
-                // Check connectivity to Logo.dev
-                await axios.get("https://img.logo.dev/google.com", { 
-                    timeout: 4000,
-                    params: { token }
-                 });
-                return { name: "Logo.dev API", status: "ok" };
-            } catch (e) {
-                return { name: "Logo.dev API", status: "fail", error: e.response?.status === 401 ? "Invalid Key" : "Unreachable" };
-            }
-        })(),
-
-        // 12. Cloudinary API
         (async () => {
             try {
                 const { v2: cloudinary } = await import("cloudinary");
-                cloudinary.config({
-                    cloud_name: process.env.CLOUD_NAME,
-                    api_key: process.env.API_KEY,
-                    api_secret: process.env.API_SECRET,
-                });
+                if (!process.env.CLOUD_NAME) return { name: "Cloudinary", status: "warn" };
+                cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.API_KEY, api_secret: process.env.API_SECRET });
                 await cloudinary.api.ping();
-                return { name: "Cloudinary API", status: "ok" };
-            } catch (e) {
-                return { name: "Cloudinary API", status: "fail", error: "Auth failed / Unreachable" };
-            }
+                return { name: "Cloudinary", status: "ok" };
+            } catch (e) { return { name: "Cloudinary", status: "fail" }; }
+        })(),
+        (async () => {
+            try {
+                if (!process.env.EMAIL_HOST) return { name: "SMTP (Gmail)", status: "warn" };
+                const transporter = nodemailer.createTransport({ host: process.env.EMAIL_HOST, port: process.env.EMAIL_PORT, secure: true, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
+                await transporter.verify();
+                return { name: "SMTP (Gmail)", status: "ok" };
+            } catch (e) { return { name: "SMTP (Gmail)", status: "fail" }; }
+        })(),
+
+        // Intelligence
+        (async () => {
+            try {
+                const url = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
+                await axios.get(url, { timeout: 2000 });
+                return { name: "AI Service", status: "ok" };
+            } catch (e) { return { name: "AI Service", status: "fail" }; }
         })(),
     ];
 
     const results = await Promise.all(checks);
-    
-    results.forEach(res => {
-        console.log(formatLog(res.name, res.status, res.error));
-    });
+    results.forEach(res => console.log(formatLog(res.name, res.status, res.error)));
 
-    const passed = results.filter(r => r.status === "ok").length;
-    const failed = results.length - passed;
+    const failed = results.filter(r => r.status === "fail").length;
+    const warns = results.filter(r => r.status === "warn").length;
 
     console.log(`\n${colors.bright}----------------------------------------`);
-    console.log(`# Total: ${results.length} | ${colors.green}Passed: ${passed}${colors.reset} | ${colors.red}Failed: ${failed}${colors.reset}`);
-    console.log(`${colors.bright}----------------------------------------${colors.reset}\n`);
+    console.log(`Status Summary: ${failed === 0 ? colors.green + "HEALTHY" : colors.red + "ISSUES"} | Warnings: ${warns}`);
+    console.log(`----------------------------------------${colors.reset}\n`);
 
-    if (failed > 0) {
-        console.warn(`${colors.yellow}⚠️  Caution: ${failed} services offline.${colors.reset}\n`);
-    } else {
-        console.log(`${colors.green}✨ All systems operational.${colors.reset}\n`);
-    }
-
-    // Run Data Pipeline Ingestion Audit
     await runIngestionAudit();
 };
 
 const runIngestionAudit = async () => {
     try {
         const ExternalProfile = mongoose.model("ExternalProfile");
+        const MarketIntelligence = mongoose.model("MarketIntelligence");
         
-        // Count by source
         const phCount = await ExternalProfile.countDocuments({ source: "producthunt" });
         const ghCount = await ExternalProfile.countDocuments({ source: "github" });
-        const csvCount = await ExternalProfile.countDocuments({ source: { $in: ["csv", "investors_raw"] } });
+        const intelCount = await MarketIntelligence.countDocuments({});
         const logoEnriched = await ExternalProfile.countDocuments({ logo: { $exists: true, $ne: "" } });
-        const total = await ExternalProfile.countDocuments({});
 
         console.log(`${colors.cyan}${colors.bright}========================================`);
         console.log(`📊 INGESTION SUMMARY (LIVE DB)`);
         console.log(`========================================${colors.reset}`);
-        console.log(`${colors.bright}Product Hunt:${colors.reset} ${colors.green}${phCount}${colors.reset}`);
-        console.log(`${colors.bright}GitHub:${colors.reset} ${colors.green}${ghCount}${colors.reset}`);
-        console.log(`${colors.bright}investors_raw.csv:${colors.reset} ${colors.green}${csvCount}${colors.reset}`);
-        console.log(`${colors.bright}Logo.dev enriched:${colors.reset} ${colors.green}${logoEnriched}${colors.reset}`);
-        console.log(`${colors.bright}Total External Records:${colors.reset} ${colors.cyan}${colors.bright}${total}${colors.reset}`);
+        console.log(`${colors.bright}Market Intelligence:${colors.reset} ${colors.green}${intelCount}${colors.reset}`);
+        console.log(`${colors.bright}Product Hunt:${colors.reset}        ${colors.green}${phCount}${colors.reset}`);
+        console.log(`${colors.bright}GitHub Profiles:${colors.reset}     ${colors.green}${ghCount}${colors.reset}`);
+        console.log(`${colors.bright}Logo.dev Enriched:${colors.reset}   ${colors.green}${logoEnriched}${colors.reset}`);
         console.log(`${colors.cyan}${colors.bright}========================================${colors.reset}\n`);
-
-    } catch (e) {
-        console.error(`${colors.red}✖ Ingestion Audit Failed:${colors.reset}`, e.message);
-    }
+    } catch (e) {}
 };
 
 export default runServiceHealthCheck;

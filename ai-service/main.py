@@ -1,3 +1,15 @@
+import os
+import sys
+
+# Set environment variables before any heavy imports
+os.environ["HF_HUB_OFFLINE"] = "1"  # Skip checking for hub updates if we have the model
+
+print(">>> Starting Startup Connect AI Engine...", flush=True)
+print("   - Initializing libraries (this may take up to a minute on Windows)...", flush=True)
+
+import time
+start_init = time.time()
+
 from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Optional
@@ -9,7 +21,7 @@ import re
 from engine import MatchingEngine
 from dotenv import load_dotenv
 
-import os
+print(f"   - Libraries loaded in {time.time() - start_init:.2f} seconds", flush=True)
 
 # Try to load from current dir, then from root
 load_dotenv()
@@ -19,7 +31,9 @@ if not os.getenv("GEMINI_API_KEY"):
 app = FastAPI(title="Startup Connect AI Engine")
 
 # Load engine which handles model and LLM
+print("   - Loading Matching Engine and AI Models...", flush=True)
 matching_engine = MatchingEngine()
+print("[OK] AI Engine initialized and ready.", flush=True)
 
 @app.get("/")
 async def root():

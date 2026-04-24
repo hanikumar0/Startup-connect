@@ -19,6 +19,16 @@ const matchSchema = new mongoose.Schema(
             max: 100,
         },
         reasons: [String],
+        warnings: [String],
+        category: {
+            type: String,
+            enum: ["Excellent Fit", "Strong Fit", "Moderate Fit", "Low Fit"],
+            default: "Low Fit"
+        },
+        lastMatchedAt: {
+            type: Date,
+            default: Date.now
+        },
         status: {
             type: String,
             enum: ["NEW", "VIEWED", "CONNECTED", "DISMISSED"],

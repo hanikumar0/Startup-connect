@@ -24,8 +24,19 @@ export function StartupCard({ startup, onSave, isSaved }: StartupCardProps) {
         <CardContent className="p-0 space-y-4">
           {/* Top Section */}
           <div className="flex justify-between items-start">
-            <div className="h-10 w-10 rounded-lg bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-900 font-bold group-hover:bg-zinc-950 group-hover:text-white transition-all">
-              {String(startup.startupName || startup.name || startup.userId?.name || 'S')[0]}
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-900 font-bold group-hover:bg-zinc-950 group-hover:text-white transition-all">
+                {String(startup.startupName || startup.name || startup.userId?.name || 'S')[0]}
+              </div>
+              {startup.fitScore && (
+                <Badge className={cn(
+                    "h-6 px-2 text-[10px] font-bold border-none",
+                    startup.fitScore >= 80 ? "bg-emerald-500 text-white" : 
+                    startup.fitScore >= 60 ? "bg-indigo-500 text-white" : "bg-zinc-400 text-white"
+                )}>
+                    {startup.fitScore}% Fit
+                </Badge>
+              )}
             </div>
             <Button 
                 variant="ghost" 

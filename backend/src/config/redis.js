@@ -13,21 +13,18 @@ try {
         maxRetriesPerRequest: 1,
         retryStrategy(times) {
             if (times > MAX_RETRIES) {
-                // Stop retrying after MAX_RETRIES attempts
                 if (!hasLoggedRedisError) {
                     hasLoggedRedisError = true;
-                    console.warn(
-                        `⚠️ Redis unavailable after ${MAX_RETRIES} retries — using in-memory fallback. App will continue to work normally.`
-                    );
+                    console.warn(`⚠️ Redis unavailable after ${MAX_RETRIES} retries — using fallback.`);
                 }
-                return null; // Stop reconnecting
+                return null;
             }
-            const delay = Math.min(times * 500, 2000);
+            const delay = Math.min(times * 1000, 5000);
+            if (times === 1) console.warn("🕒 Redis: Connection lost. Retrying...");
             return delay;
         },
-        // Enable TLS if using rediss:// or cloud providers often require it
         tls: REDIS_URL.startsWith("rediss://") ? {} : undefined,
-        connectTimeout: 5000, // 5 seconds
+        connectTimeout: 5000,
         lazyConnect: false,
     };
 
@@ -37,6 +34,8 @@ try {
         isRedisAvailable = true;
         hasLoggedRedisError = false;
         console.log("🚀 Redis connected successfully");
+        // Force noeviction policy to prevent data loss of operational stats
+        redis.config("SET", "maxmemory-policy", "noeviction").catch(() => {});
     });
 
     redis.on("error", (err) => {

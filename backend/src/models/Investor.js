@@ -117,6 +117,28 @@ const investorSchema = new mongoose.Schema(
         boostUntil: {
             type: Date,
         },
+        profileScore: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 100
+        },
+        visibilityScore: {
+            type: Number,
+            default: 0
+        },
+        achievements: [{
+            title: String,
+            date: Date,
+            type: { type: String, enum: ["Certification", "Award", "Milestone", "Other"] }
+        }],
+        recentUpdates: [{
+            updateType: String,
+            description: String,
+            date: { type: Date, default: Date.now }
+        }],
+        trustBadges: [String],
+        lastAIPulled: { type: Date }
     },
     { timestamps: true }
 );

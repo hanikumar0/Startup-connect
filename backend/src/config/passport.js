@@ -105,8 +105,8 @@ if (
     } catch (err) {
         console.warn("⚠️ LinkedIn OAuth strategy failed to load:", err.message);
     }
-} else {
-    console.warn("⚠️ LinkedIn OAuth not configured — credentials missing or placeholder");
+} else if (process.env.NODE_ENV === 'production') {
+    console.warn("⚠️ LinkedIn OAuth: Credentials missing. User login via LinkedIn will be unavailable.");
 }
 
 passport.serializeUser((user, done) => {

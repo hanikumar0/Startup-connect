@@ -15,7 +15,8 @@ import {
   Lock,
   Bell,
   LogOut,
-  Zap
+  Zap,
+  Sparkles
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
 
@@ -29,6 +30,7 @@ export function Sidebar() {
     { label: "Discover", href: "/dashboard/discover", icon: Search },
     { label: "Connections", href: "/dashboard/network", icon: Users },
     { label: "Messages", href: "/dashboard/chat", icon: MessageSquare },
+    { label: "Market Intel", href: "/dashboard/intelligence", icon: Sparkles },
     { label: "Meetings", href: "/dashboard/meetings", icon: Calendar },
     { label: "Data Rooms", href: "/dashboard/vdr", icon: ShieldCheck },
     { label: "Saved", href: "/dashboard/saved", icon: Bookmark },

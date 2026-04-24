@@ -1,11 +1,18 @@
 import Startup from "../models/Startup.js";
 import Investor from "../models/Investor.js";
 import Saved from "../models/Saved.js";
+import Match from "../models/Match.js";
 
 // @desc    Discover startups with filters, search and pagination
 // @route   GET /api/discover/startups
 export const discoverStartups = async (req, res) => {
     try {
+        const userRole = req.user?.role?.toLowerCase() || "startup";
+        if (userRole === "startup") {
+            console.log(`[Discovery] Role: startup | Blocked access to startups list`);
+            return res.status(200).json({ success: true, total: 0, page: 1, pages: 0, data: [] });
+        }
+
         const { industry, stage, location, minFunding, maxFunding, q, sort, page = 1, limit = 8 } = req.query;
         let query = { isPublic: true };
 
@@ -25,12 +32,12 @@ export const discoverStartups = async (req, res) => {
             ];
         }
 
-        let sortQuery = { isFeatured: -1, boostUntil: -1, createdAt: -1 };
+        let sortQuery = { isFeatured: -1, boostUntil: -1, fundingScore: -1, visibilityScore: -1, profileScore: -1, createdAt: -1 };
         if (sort === "funding-desc") sortQuery = { isFeatured: -1, boostUntil: -1, fundingRequired: -1 };
         if (sort === "funding-asc") sortQuery = { isFeatured: -1, boostUntil: -1, fundingRequired: 1 };
         if (sort === "newest" || sort === "new-users") sortQuery = { isFeatured: -1, boostUntil: -1, createdAt: -1 };
         if (sort === "recently-active") sortQuery = { isFeatured: -1, boostUntil: -1, updatedAt: -1 };
-        if (sort === "trending") sortQuery = { isFeatured: -1, boostUntil: -1, githubStars: -1, createdAt: -1 };
+        if (sort === "trending") sortQuery = { isFeatured: -1, boostUntil: -1, visibilityScore: -1, githubStars: -1, createdAt: -1 };
 
         const skip = (page - 1) * limit;
         const total = await Startup.countDocuments(query);
@@ -40,12 +47,32 @@ export const discoverStartups = async (req, res) => {
             .limit(Number(limit))
             .populate("userId", "name avatar");
 
+        // Attach Fit Scores
+        let investorProfile = null;
+        if (userRole === "investor") {
+            investorProfile = await Investor.findOne({ userId: req.user.id });
+        }
+
+        const startupsWithScores = await Promise.all(startups.map(async (st) => {
+            let fitScore = null;
+            if (investorProfile) {
+                const match = await Match.findOne({ startupId: st._id, investorId: investorProfile._id });
+                fitScore = match ? match.score : null;
+            }
+            return { ...st._doc, fitScore };
+        }));
+
+        // Sort by Fit Score if investorProfile exists and user didn't specify other sort
+        if (investorProfile && !sort) {
+            startupsWithScores.sort((a, b) => (b.fitScore || 0) - (a.fitScore || 0));
+        }
+
         res.status(200).json({
             success: true,
             total,
             page: Number(page),
             pages: Math.ceil(total / limit),
-            data: startups
+            data: startupsWithScores
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -56,7 +83,20 @@ export const discoverStartups = async (req, res) => {
 // @route   GET /api/discover/investors
 export const discoverInvestors = async (req, res) => {
     try {
-        const { type, industry, stage, location, q, sort, page = 1, limit = 8 } = req.query;
+        const userRole = req.user?.role?.toLowerCase() || "startup";
+        const currentUserId = req.user.id;
+        
+        if (userRole === "investor") {
+            console.log(`[Discovery] Role: investor | Blocked access to investors list`);
+            return res.status(200).json({ success: true, total: 0, page: 1, pages: 0, data: [] });
+        }
+
+        let startupProfile = null;
+        if (userRole === "startup") {
+            startupProfile = await Startup.findOne({ userId: currentUserId });
+        }
+
+        const { industry, type, stage, location, q, sort, page = 1, limit = 8 } = req.query;
         let query = { isPublic: true };
 
         if (type && type !== "All") query.investorType = type;
@@ -71,7 +111,7 @@ export const discoverInvestors = async (req, res) => {
             ];
         }
 
-        let sortQuery = { isFeatured: -1, boostUntil: -1, createdAt: -1 };
+        let sortQuery = { isFeatured: -1, boostUntil: -1, visibilityScore: -1, profileScore: -1, createdAt: -1 };
         if (sort === "newest" || sort === "new-users") sortQuery = { isFeatured: -1, boostUntil: -1, createdAt: -1 };
         if (sort === "recently-active") sortQuery = { isFeatured: -1, boostUntil: -1, updatedAt: -1 };
         const skip = (page - 1) * limit;
@@ -82,12 +122,27 @@ export const discoverInvestors = async (req, res) => {
             .limit(Number(limit))
             .populate("userId", "name avatar");
 
+        // Attach Fit Scores
+        const investorsWithScores = await Promise.all(investors.map(async (inv) => {
+            let fitScore = null;
+            if (startupProfile) {
+                const match = await Match.findOne({ startupId: startupProfile._id, investorId: inv._id });
+                fitScore = match ? match.score : null;
+            }
+            return { ...inv._doc, fitScore };
+        }));
+
+        // Sort by Fit Score if startupProfile exists and user didn't specify other sort
+        if (startupProfile && !sort) {
+            investorsWithScores.sort((a, b) => (b.fitScore || 0) - (a.fitScore || 0));
+        }
+
         res.status(200).json({
             success: true,
             total,
             page: Number(page),
             pages: Math.ceil(total / limit),
-            data: investors
+            data: investorsWithScores
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -103,33 +158,33 @@ export const discoverExternal = async (req, res) => {
         const userRole = req.user?.role?.toLowerCase() || "startup";
         const targetType = userRole === "startup" ? "investor" : "startup";
         
+        console.log(`[Discovery] Role: ${userRole}`);
+        console.log(`[Discovery] Filter applied: ${targetType}s only`);
+
         // 1. Initial Inclusive Fetch
-        let query = {};
+        let query = { type: targetType };
         const hasFilters = industry || location || q || source;
 
         if (hasFilters) {
-            query.$and = [];
             if (industry && industry !== "All" && industry !== "All Industries") {
-                query.$and.push({ industry: { $regex: industry, $options: "i" } });
+                query.industry = { $regex: industry, $options: "i" };
             }
-            if (location) query.$and.push({ location: { $regex: location, $options: "i" } });
-            if (source) query.$and.push({ source: source });
+            if (location) query.location = { $regex: location, $options: "i" };
+            if (source) query.source = source;
             if (q) {
-                query.$and.push({
-                    $or: [
-                        { name: { $regex: q, $options: "i" } },
-                        { firm: { $regex: q, $options: "i" } },
-                        { description: { $regex: q, $options: "i" } }
-                    ]
-                });
+                query.$or = [
+                    { name: { $regex: q, $options: "i" } },
+                    { firm: { $regex: q, $options: "i" } },
+                    { description: { $regex: q, $options: "i" } }
+                ];
             }
         }
 
         // STEP 1 — GET TOTAL FROM DATABASE
-        const totalCount = await ExternalProfile.countDocuments({});
+        const totalCount = await ExternalProfile.countDocuments(query);
         
         const skip = (page - 1) * limit;
-        const allFetched = await ExternalProfile.find({})
+        const allFetched = await ExternalProfile.find(query)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(Number(limit))
@@ -222,8 +277,9 @@ export const getRegisteredUsers = async (req, res) => {
         // STEP 5 — SMART MATCH LOG
         if (profiles.length === 0) {
             console.log("No registered matches, falling back to external leads.");
+            const targetType = req.user?.role?.toLowerCase() === "startup" ? "investor" : "startup";
             const ExternalProfile = (await import("../models/ExternalProfile.js")).default;
-            const fallback = await ExternalProfile.find({})
+            const fallback = await ExternalProfile.find({ type: targetType })
                 .sort({ createdAt: -1 })
                 .limit(20)
                 .lean();
@@ -298,23 +354,132 @@ export const getDiscoveryStats = async (req, res) => {
     }
 };
 
+export const searchInternal = async (req, res) => {
+    try {
+        const { q, industry, stage, location } = req.query;
+        if (!q) return res.status(400).json({ success: false, message: "Search query required" });
+
+        const userRole = req.user?.role?.toLowerCase() || "startup";
+        const targetType = userRole === "startup" ? "investor" : "startup";
+        
+        const searchRegex = { $regex: q, $options: "i" };
+        let query = { isPublic: true, userId: { $exists: true, $ne: null } };
+
+        if (targetType === "investor") {
+            query.$or = [
+                { investorName: searchRegex },
+                { firmName: searchRegex },
+                { investmentThesis: searchRegex }
+            ];
+            if (industry && industry !== "All") query.preferredIndustries = { $in: [new RegExp(industry, "i")] };
+            if (stage && stage !== "All") query.preferredStages = { $in: [stage] };
+        } else {
+            query.$or = [
+                { startupName: searchRegex },
+                { description: searchRegex },
+                { industry: searchRegex }
+            ];
+            if (industry && industry !== "All") query.industry = industry;
+            if (stage && stage !== "All") query.stage = stage;
+        }
+
+        if (location) query.location = { $regex: location, $options: "i" };
+
+        let profiles;
+        if (targetType === "investor") {
+            profiles = await Investor.find(query).populate("userId", "name avatar");
+        } else {
+            profiles = await Startup.find(query).populate("userId", "name avatar");
+        }
+
+        res.status(200).json({ success: true, data: profiles });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const searchGlobal = async (req, res) => {
+    try {
+        const { q, industry, location } = req.query;
+        if (!q) return res.status(400).json({ success: false, message: "Search query required" });
+
+        const userRole = req.user?.role?.toLowerCase() || "startup";
+        const targetType = userRole === "startup" ? "investor" : "startup";
+        
+        const ExternalProfile = (await import("../models/ExternalProfile.js")).default;
+        let query = {
+            type: targetType,
+            $or: [
+                { name: { $regex: q, $options: "i" } },
+                { firm: { $regex: q, $options: "i" } },
+                { description: { $regex: q, $options: "i" } }
+            ]
+        };
+
+        if (industry && industry !== "All" && industry !== "All Industries") {
+            query.industry = { $regex: industry, $options: "i" };
+        }
+        if (location) query.location = { $regex: location, $options: "i" };
+
+        const results = await ExternalProfile.find(query).limit(50);
+        res.status(200).json({ success: true, data: results });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export const globalSearch = async (req, res) => {
     try {
         const { q } = req.query;
         if (!q) return res.status(400).json({ success: false, message: "Search query required" });
 
+        const userRole = req.user?.role?.toLowerCase() || "startup";
+        const targetType = userRole === "startup" ? "investor" : "startup";
+        const ExternalProfile = (await import("../models/ExternalProfile.js")).default;
         const searchRegex = { $regex: q, $options: "i" };
         
-        const [startups, investors] = await Promise.all([
-            Startup.find({ isPublic: true, $or: [{ startupName: searchRegex }, { industry: searchRegex }] }).limit(5),
-            Investor.find({ isPublic: true, $or: [{ investorName: searchRegex }, { firmName: searchRegex }] }).limit(5)
-        ]);
+        // 1. Fetch Internal Results (Role prioritized and filtered)
+        let internalResults = [];
+        if (targetType === "investor") {
+            internalResults = await Investor.find({ isPublic: true, $or: [{ investorName: searchRegex }, { firmName: searchRegex }] }).limit(20).populate("userId", "name avatar");
+        } else {
+            internalResults = await Startup.find({ isPublic: true, $or: [{ startupName: searchRegex }, { industry: searchRegex }] }).limit(20).populate("userId", "name avatar");
+        }
+
+        // 2. Fetch External (Scraped) Results (Strict Filtering)
+        const external = await ExternalProfile.find({
+            type: targetType,
+            $or: [
+                { name: searchRegex },
+                { firm: searchRegex },
+                { description: searchRegex }
+            ]
+        }).limit(20);
+
+        // 3. Fetch Market Intelligence (News, Events, Grants)
+        const MarketIntelligence = (await import("../models/MarketIntelligence.js")).default;
+        const intelligence = await MarketIntelligence.find({
+            status: "active",
+            $or: [
+                { title: searchRegex },
+                { summary: searchRegex },
+                { tags: { $in: [new RegExp(q, "i")] } }
+            ]
+        }).limit(15);
 
         res.status(200).json({
             success: true,
-            data: { startups, investors }
+            data: {
+                internal: {
+                    prioritized: internalResults,
+                    [targetType + "s"]: internalResults
+                },
+                external: external,
+                intelligence: intelligence
+            }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+

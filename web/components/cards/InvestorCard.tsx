@@ -8,6 +8,11 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
+import { WarmIntroModal } from "@/components/network/WarmIntroModal";
+import { useAuthStore } from "@/lib/store";
+import { useEffect, useState } from "react";
+import { apiFetchJSON } from "@/lib/api";
+
 interface InvestorCardProps {
   investor: any;
   onSave?: (id: string) => void;
@@ -15,17 +20,51 @@ interface InvestorCardProps {
 }
 
 export function InvestorCard({ investor, onSave, isSaved }: InvestorCardProps) {
+  const { user } = useAuthStore();
+  const [isIntroOpen, setIsIntroOpen] = useState(false);
+  const [startupProfile, setStartupProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (user?.role === "startup") {
+        fetchStartupProfile();
+    }
+  }, [user]);
+
+  const fetchStartupProfile = async () => {
+    try {
+        const res = await apiFetchJSON("/api/startups/me");
+        if (res.success) setStartupProfile(res.data);
+    } catch (err) {}
+  };
+
   return (
     <motion.div
       whileHover={{ y: -4 }}
       className="group"
     >
+      <WarmIntroModal 
+        isOpen={isIntroOpen} 
+        onClose={() => setIsIntroOpen(false)} 
+        investor={investor} 
+        startup={startupProfile}
+      />
       <Card className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-300">
         <CardContent className="p-0 space-y-4">
           {/* Top Section */}
           <div className="flex justify-between items-start">
-            <div className="h-10 w-10 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold group-hover:bg-zinc-950 group-hover:text-white transition-all">
-              {String(investor.investorName || investor.name || investor.userId?.name || 'I')[0]}
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold group-hover:bg-zinc-950 group-hover:text-white transition-all">
+                {String(investor.investorName || investor.name || investor.userId?.name || 'I')[0]}
+              </div>
+              {investor.fitScore && (
+                <Badge className={cn(
+                    "h-6 px-2 text-[10px] font-bold border-none",
+                    investor.fitScore >= 80 ? "bg-emerald-500 text-white" : 
+                    investor.fitScore >= 60 ? "bg-indigo-500 text-white" : "bg-zinc-400 text-white"
+                )}>
+                    {investor.fitScore}% Fit
+                </Badge>
+              )}
             </div>
             <Button 
                 variant="ghost" 
@@ -71,15 +110,26 @@ export function InvestorCard({ investor, onSave, isSaved }: InvestorCardProps) {
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3 pt-4">
-             <Button asChild variant="outline" className="h-10 rounded-lg border-zinc-200 font-semibold hover:bg-zinc-900 hover:text-white transition-all group-hover:border-zinc-950">
+          <div className="grid grid-cols-1 gap-2 pt-4">
+             <Button asChild variant="outline" className="h-10 rounded-xl border-zinc-200 font-bold text-[10px] uppercase tracking-widest hover:bg-zinc-950 hover:text-white transition-all">
                  <Link href={`/investor/${investor._id}`}>
-                    View Profile
+                    Analyze Brief
                  </Link>
              </Button>
-             <Button variant="outline" className="h-10 rounded-lg border-zinc-200 font-semibold hover:bg-zinc-900 hover:text-white transition-all group-hover:border-zinc-950">
-                 Connect
-             </Button>
+             <div className="grid grid-cols-2 gap-2">
+                {user?.role === "startup" && (
+                    <Button 
+                        variant="outline" 
+                        onClick={() => setIsIntroOpen(true)}
+                        className="h-10 rounded-xl border-indigo-100 bg-indigo-50/30 text-indigo-600 font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                    >
+                        Warm Intro
+                    </Button>
+                )}
+                <Button className={cn("h-10 rounded-xl bg-zinc-900 text-white font-bold text-[10px] uppercase tracking-widest hover:bg-zinc-800 transition-all", user?.role !== "startup" && "col-span-2")}>
+                    Connect
+                </Button>
+             </div>
           </div>
         </CardContent>
       </Card>

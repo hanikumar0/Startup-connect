@@ -9,6 +9,8 @@ import Meeting from "../models/Meeting.js";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { createNotification } from "../services/notificationService.js";
+import { processProfileUpdate } from "../services/profileIntelligenceService.js";
+
 
 export const updateUserProfile = async (req, res) => {
     try {
@@ -79,7 +81,15 @@ export const updateUserProfile = async (req, res) => {
         }
 
         const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
-        res.status(200).json({ success: true, user: updatedUser });
+
+        // Trigger Intelligence Service
+        const intelligence = await processProfileUpdate(userId, updates, user.role);
+
+        res.status(200).json({ 
+            success: true, 
+            user: updatedUser,
+            intelligence 
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -103,14 +113,18 @@ export const createStartupProfile = async (req, res) => {
                 fundingStage,
                 fundingRequired,
                 website,
-                tags
+                tags,
+                lastUpdated: new Date()
             },
             { upsert: true, new: true }
         );
 
         await User.findByIdAndUpdate(userId, { isProfileCompleted: true });
 
-        res.status(200).json({ success: true, profile });
+        // Intelligence Boost
+        const intelligence = await processProfileUpdate(userId, req.body, "STARTUP");
+
+        res.status(200).json({ success: true, profile, intelligence });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -130,14 +144,18 @@ export const createInvestorProfile = async (req, res) => {
                 fundingStages,
                 minInvestment,
                 maxInvestment,
-                bio
+                bio,
+                lastUpdated: new Date()
             },
             { upsert: true, new: true }
         );
 
         await User.findByIdAndUpdate(userId, { isProfileCompleted: true });
+        
+        // Intelligence Boost
+        const intelligence = await processProfileUpdate(userId, req.body, "INVESTOR");
 
-        res.status(200).json({ success: true, profile });
+        res.status(200).json({ success: true, profile, intelligence });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -164,7 +182,14 @@ export const getMyProfile = async (req, res) => {
                 isProfileCompleted: user.isProfileCompleted,
                 verificationStatus: user.verificationStatus
             },
-            profile
+            profile,
+            intelligence: {
+                profileScore: profile?.profileScore || 0,
+                visibilityScore: profile?.visibilityScore || 0,
+                achievements: profile?.achievements || [],
+                recentUpdates: profile?.recentUpdates || [],
+                trustBadges: profile?.trustBadges || []
+            }
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -566,3 +591,72 @@ export const getMyConnections = async (req, res) => {
     }
 };
 
+
+export const integrateCoFounder = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const userId = req.user.id;
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Co-founder email is required" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (user.email.toLowerCase() === email.toLowerCase()) {
+            return res.status(400).json({ success: false, message: "You cannot be your own co-founder" });
+        }
+
+        // Check if already in co-founders
+        if (user.coFounders.includes(email.toLowerCase())) {
+            return res.status(400).json({ success: false, message: "This co-founder is already integrated" });
+        }
+
+        // Find the other user
+        const otherUser = await User.findOne({ email: email.toLowerCase() });
+
+        // Update current user
+        user.coFounders.push(email.toLowerCase());
+        await user.save();
+
+        if (otherUser) {
+            // Also link back if not already linked
+            if (!otherUser.coFounders.includes(user.email.toLowerCase())) {
+                otherUser.coFounders.push(user.email.toLowerCase());
+                await otherUser.save();
+            }
+
+            // Create notification for other user
+            await createNotification({
+                userId: otherUser._id,
+                sender: userId,
+                type: "co_founder_integrated",
+                title: "Co-Founder Integrated",
+                message: `${user.name} has integrated you as a co-founder for ${user.companyName || 'their startup'}.`,
+                link: "/dashboard/settings"
+            });
+        }
+
+        // Create notification for current user
+        await createNotification({
+            userId,
+            sender: userId, // Self or system
+            type: "co_founder_integrated",
+            title: "Co-Founder Success",
+            message: `You have successfully integrated ${email} as a co-founder.`,
+            link: "/dashboard/settings"
+        });
+
+        res.status(200).json({ 
+            success: true, 
+            message: "Co-founder integrated successfully",
+            coFounders: user.coFounders
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
