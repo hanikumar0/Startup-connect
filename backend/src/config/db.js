@@ -5,9 +5,12 @@ const connectDB = async () => {
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       dbName: "startup_connect",
       tls: true,
-      serverSelectionTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
       family: 4,
+      retryWrites: true,
+      w: "majority"
     });
 
     // Disable buffering if we lose connection

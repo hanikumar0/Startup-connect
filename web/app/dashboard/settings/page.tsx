@@ -41,7 +41,7 @@ export default function SettingsPage() {
     const [user, setUser] = useState<any>(globalUser || {});
     const [isLoading, setIsLoading] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
-    const [activeTab, setActiveTab ] = useState("profile");
+    const [activeTab, setActiveTab] = useState("profile");
 
     // KYC States
     const [kycStatus, setKycStatus] = useState("not_submitted");
@@ -169,7 +169,7 @@ export default function SettingsPage() {
     // AUTO-SAVE LOGIC
     useEffect(() => {
         if (!user || !user.email) return;
-        
+
         const delayDebounceFn = setTimeout(() => {
             // Only auto-save if something meaningful changed compared to globalUser
             const hasChanged = JSON.stringify(user) !== JSON.stringify(globalUser);
@@ -227,7 +227,7 @@ export default function SettingsPage() {
                 setCoFounderEmail("");
                 // Update local state to show new co-founder
                 setUser({ ...user, coFounders: data.coFounders });
-                updateUser({ ...globalUser, coFounders: data.coFounders });
+                updateUser({ coFounders: data.coFounders });
             } else {
                 alert(data.message || "Integration failed");
             }
@@ -334,10 +334,10 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col items-end">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visibility Rank</span>
-                             <Badge className="bg-indigo-600 border-none text-white font-black text-[10px] uppercase h-8 px-4 shadow-xl italic mt-1">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visibility Rank</span>
+                            <Badge className="bg-indigo-600 border-none text-white font-black text-[10px] uppercase h-8 px-4 shadow-xl italic mt-1">
                                 Top {100 - Math.min(intelligence.visibilityScore, 99)}% Baseline
-                             </Badge>
+                            </Badge>
                         </div>
                         <Badge className="bg-white border-slate-200 text-slate-900 font-black text-[10px] uppercase h-8 px-4 shadow-sm italic">
                             {isStartup ? `Stage: ${user.stage || 'Idea'}` : (isInvestor ? `Tier: ${user.investorStage || 'New'}` : user.role)}
@@ -350,23 +350,23 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card className="bg-slate-900 border-none rounded-[24px] p-6 text-white shadow-2xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700">
-                             <TrendingUp size={80} />
+                            <TrendingUp size={80} />
                         </div>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Profile Authority</p>
                         <h4 className="text-4xl font-black italic tracking-tighter">{intelligence.profileScore}/100</h4>
                         <div className="mt-4 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                            <motion.div 
+                            <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${intelligence.profileScore}%` }}
-                                className="h-full bg-indigo-500" 
+                                className="h-full bg-indigo-500"
                             />
                         </div>
                     </Card>
 
                     <Card className="bg-white border-2 border-slate-50 rounded-[24px] p-6 shadow-sm flex flex-col justify-between">
                         <div>
-                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Trust Signals</p>
-                             <div className="flex flex-wrap gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Trust Signals</p>
+                            <div className="flex flex-wrap gap-2">
                                 {intelligence.trustBadges.length > 0 ? intelligence.trustBadges.map((badge: string, i: number) => (
                                     <Badge key={i} className="bg-emerald-50 text-emerald-600 border-none text-[9px] font-black uppercase px-2 py-1 italic">
                                         ★ {badge}
@@ -374,17 +374,17 @@ export default function SettingsPage() {
                                 )) : (
                                     <p className="text-[10px] font-medium text-slate-300 italic">No verified signals yet.</p>
                                 )}
-                             </div>
+                            </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-slate-50">
-                             <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest flex items-center gap-2">
+                            <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest flex items-center gap-2">
                                 <Zap size={12} /> {intelligence.visibilityScore > 50 ? "Priority Discovery Active" : "Standard Discovery"}
-                             </p>
+                            </p>
                         </div>
                     </Card>
 
                     <Card className="bg-indigo-50 border-none rounded-[24px] p-6 shadow-inner flex flex-col justify-between">
-                         <div>
+                        <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-4">AI Suggestions</p>
                             <div className="space-y-3">
                                 {intelligence.suggestions?.length > 0 ? intelligence.suggestions.map((s: string, i: number) => (
@@ -396,7 +396,7 @@ export default function SettingsPage() {
                                     <p className="text-[10px] font-medium text-indigo-300 italic">Profile is fully optimized.</p>
                                 )}
                             </div>
-                         </div>
+                        </div>
                     </Card>
                 </div>
 
@@ -413,8 +413,8 @@ export default function SettingsPage() {
                     <div className="text-center sm:text-left">
                         <h3 className="text-2xl font-black text-slate-900 italic tracking-tight">{user.name}</h3>
                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[4px] mt-2 flex items-center gap-2 justify-center sm:justify-start">
-                           <Verified size={12} className={kycStatus === 'verified' ? "text-emerald-500" : "text-slate-300"} />
-                           {kycStatus === 'verified' ? 'Identified Presence' : 'Standard Presence'}
+                            <Verified size={12} className={kycStatus === 'verified' ? "text-emerald-500" : "text-slate-300"} />
+                            {kycStatus === 'verified' ? 'Identified Presence' : 'Standard Presence'}
                         </p>
                     </div>
                 </div>
@@ -423,50 +423,50 @@ export default function SettingsPage() {
                     {/* Common Fields */}
                     <div className="space-y-6">
                         <div className="space-y-2 opacity-60 grayscale cursor-not-allowed">
-                             <div className="flex items-center justify-between px-1">
+                            <div className="flex items-center justify-between px-1">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</Label>
                                 <LockIcon size={12} className="text-slate-300" />
                             </div>
                             <Input value={user.name || ''} disabled className="h-12 border-slate-100 bg-slate-50/50 rounded-xl px-4 text-sm font-bold" />
                         </div>
                         <div className="space-y-2 opacity-60 grayscale cursor-not-allowed">
-                             <div className="flex items-center justify-between px-1">
+                            <div className="flex items-center justify-between px-1">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Primary Email</Label>
                                 <LockIcon size={12} className="text-slate-300" />
                             </div>
                             <Input value={user.email || ''} disabled className="h-12 bg-slate-50/50 border-slate-100 text-slate-400 text-sm font-bold px-4" />
                         </div>
                         <div className="space-y-2">
-                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Operating Location</Label>
-                             <div className="relative">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Operating Location</Label>
+                            <div className="relative">
                                 <MapPin size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <Input 
-                                    value={user.location || ''} 
-                                    onChange={(e) => setUser({ ...user, location: e.target.value })} 
-                                    className="h-12 border-slate-100 bg-slate-50/30 rounded-xl pl-11 text-sm font-bold text-slate-900" 
+                                <Input
+                                    value={user.location || ''}
+                                    onChange={(e) => setUser({ ...user, location: e.target.value })}
+                                    className="h-12 border-slate-100 bg-slate-50/30 rounded-xl pl-11 text-sm font-bold text-slate-900"
                                     placeholder="e.g. San Francisco, US"
                                 />
-                             </div>
+                            </div>
                         </div>
                     </div>
 
                     <div className="space-y-6">
                         <div className="space-y-2">
-                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Official Presence (URL)</Label>
-                             <div className="relative">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Official Presence (URL)</Label>
+                            <div className="relative">
                                 <LinkIcon size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <Input 
-                                    value={user.website || ''} 
-                                    onChange={(e) => setUser({ ...user, website: e.target.value })} 
-                                    className="h-12 border-slate-100 bg-slate-50/30 rounded-xl pl-11 text-sm font-bold text-slate-900" 
+                                <Input
+                                    value={user.website || ''}
+                                    onChange={(e) => setUser({ ...user, website: e.target.value })}
+                                    className="h-12 border-slate-100 bg-slate-50/30 rounded-xl pl-11 text-sm font-bold text-slate-900"
                                     placeholder="https://yourwebsite.com"
                                 />
-                             </div>
+                            </div>
                         </div>
-                        
+
                         {/* Dynamic Field: Role Indicator */}
-                         <div className="space-y-2 opacity-60 grayscale cursor-not-allowed">
-                             <div className="flex items-center justify-between px-1">
+                        <div className="space-y-2 opacity-60 grayscale cursor-not-allowed">
+                            <div className="flex items-center justify-between px-1">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Institutional Branch</Label>
                                 <LockIcon size={12} className="text-slate-300" />
                             </div>
@@ -482,22 +482,22 @@ export default function SettingsPage() {
                                     )}
                                 </div>
                             </div>
-                            <Input 
-                                value={user.headline || ''} 
+                            <Input
+                                value={user.headline || ''}
                                 disabled={isCooldownActive(user.lastHeadlineUpdate)}
-                                onChange={(e) => setUser({ ...user, headline: e.target.value })} 
-                                className="h-12 border-slate-100 bg-slate-50/30 rounded-xl px-4 text-sm font-bold text-slate-900 italic" 
+                                onChange={(e) => setUser({ ...user, headline: e.target.value })}
+                                className="h-12 border-slate-100 bg-slate-50/30 rounded-xl px-4 text-sm font-bold text-slate-900 italic"
                                 placeholder={isStartup ? "Summarize your mission..." : "Define your investment thesis..."}
                             />
                         </div>
                     </div>
                 </div>
 
-                 {/* Profile Timeline Section */}
+                {/* Profile Timeline Section */}
                 <div className="pt-8 border-t border-slate-50">
                     <div className="flex items-center justify-between mb-8">
-                         <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[5px] italic">Recent Updates Timeline</h4>
-                         <Badge variant="outline" className="text-[9px] uppercase font-black text-slate-400 border-slate-100">AI Tracked</Badge>
+                        <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[5px] italic">Recent Updates Timeline</h4>
+                        <Badge variant="outline" className="text-[9px] uppercase font-black text-slate-400 border-slate-100">AI Tracked</Badge>
                     </div>
                     <div className="space-y-4">
                         {intelligence.recentUpdates?.length > 0 ? intelligence.recentUpdates.slice(0, 3).map((upd: any, i: number) => (
@@ -525,15 +525,14 @@ export default function SettingsPage() {
                 <div className="pt-8 border-t border-slate-50">
                     <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-6 block text-center">Market Positioning</Label>
                     <div className={`flex flex-wrap gap-3 justify-center ${isCooldownActive(user.lastFocusUpdate) ? 'opacity-50 pointer-events-none' : ''}`}>
-                         {focusOptions.map(opt => (
+                        {focusOptions.map(opt => (
                             <button
                                 key={opt}
                                 onClick={() => toggleTag('focus', opt)}
-                                className={`px-5 py-2.5 rounded-2xl text-[11px] font-black transition-all border-2 uppercase italic tracking-tighter ${
-                                    user.focus?.includes(opt) 
-                                    ? "bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200 -translate-y-1" 
-                                    : "bg-white border-slate-100 text-slate-400 hover:border-slate-300 hover:text-slate-600"
-                                }`}
+                                className={`px-5 py-2.5 rounded-2xl text-[11px] font-black transition-all border-2 uppercase italic tracking-tighter ${user.focus?.includes(opt)
+                                        ? "bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200 -translate-y-1"
+                                        : "bg-white border-slate-100 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                                    }`}
                             >
                                 {opt}
                             </button>
@@ -563,12 +562,11 @@ export default function SettingsPage() {
                             <CardTitle className="text-xl font-black text-slate-900 italic tracking-tight italic">KYC Authority System</CardTitle>
                             <CardDescription className="text-xs font-medium text-slate-400 mt-1">Institutional verification for high-trust matchmaking.</CardDescription>
                         </div>
-                        <Badge className={`h-8 px-4 rounded-xl font-black text-[10px] uppercase shadow-sm tracking-widest italic ${
-                            isVerified ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                            isPending ? "bg-amber-50 text-amber-600 border-amber-100" :
-                            isRejected ? "bg-rose-50 text-rose-600 border-rose-100" :
-                            "bg-white border-slate-200 text-slate-400"
-                        }`}>
+                        <Badge className={`h-8 px-4 rounded-xl font-black text-[10px] uppercase shadow-sm tracking-widest italic ${isVerified ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                isPending ? "bg-amber-50 text-amber-600 border-amber-100" :
+                                    isRejected ? "bg-rose-50 text-rose-600 border-rose-100" :
+                                        "bg-white border-slate-200 text-slate-400"
+                            }`}>
                             {isVerified ? "✔ Verified" : isPending ? "⏳ Pending Review" : isRejected ? "✖ Rejected" : "⚠ Not Verified"}
                         </Badge>
                     </div>
@@ -617,19 +615,19 @@ export default function SettingsPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Date of Birth</Label>
-                                        <Input type="date" value={kycFormData.dob} onChange={(e) => setKycFormData({...kycFormData, dob: e.target.value})} className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold" />
+                                        <Input type="date" value={kycFormData.dob} onChange={(e) => setKycFormData({ ...kycFormData, dob: e.target.value })} className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Domicile Country</Label>
-                                        <Input value={kycFormData.country} onChange={(e) => setKycFormData({...kycFormData, country: e.target.value})} placeholder="e.g. India" className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold" />
+                                        <Input value={kycFormData.country} onChange={(e) => setKycFormData({ ...kycFormData, country: e.target.value })} placeholder="e.g. India" className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold" />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                     <div className="space-y-2">
+                                    <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Select ID Archetype</Label>
-                                        <select 
+                                        <select
                                             value={kycFormData.idType}
-                                            onChange={(e) => setKycFormData({...kycFormData, idType: e.target.value})}
+                                            onChange={(e) => setKycFormData({ ...kycFormData, idType: e.target.value })}
                                             className="h-12 w-full bg-white border border-slate-100 rounded-xl px-4 text-sm font-bold text-slate-900 focus:outline-none"
                                         >
                                             <option value="Aadhaar">Aadhaar (UIDAI)</option>
@@ -641,9 +639,9 @@ export default function SettingsPage() {
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Identification Number</Label>
                                         <div className="flex gap-2">
-                                            <Input value={kycFormData.idNumber} onChange={(e) => setKycFormData({...kycFormData, idNumber: e.target.value})} placeholder="Enter document number..." className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold flex-1" />
+                                            <Input value={kycFormData.idNumber} onChange={(e) => setKycFormData({ ...kycFormData, idNumber: e.target.value })} placeholder="Enter document number..." className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold flex-1" />
                                             {(kycFormData.idType === "Aadhaar" || kycFormData.idType === "PAN") && (
-                                                <Button 
+                                                <Button
                                                     onClick={kycFormData.idType === "Aadhaar" ? handleSendAadhaarOTP : handleVerifyPAN}
                                                     disabled={isVerifyingInstant}
                                                     className="h-12 px-6 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-widest border border-indigo-100"
@@ -656,7 +654,7 @@ export default function SettingsPage() {
                                 </div>
 
                                 {isAadhaarOTPSent && (
-                                    <motion.div 
+                                    <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
                                         className="p-6 bg-indigo-50/30 border border-indigo-100 rounded-[24px] space-y-4"
@@ -671,14 +669,14 @@ export default function SettingsPage() {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <Input 
-                                                value={aadhaarOTP} 
-                                                onChange={(e) => setAadhaarOTP(e.target.value)} 
-                                                placeholder="Enter 6-digit OTP" 
+                                            <Input
+                                                value={aadhaarOTP}
+                                                onChange={(e) => setAadhaarOTP(e.target.value)}
+                                                placeholder="Enter 6-digit OTP"
                                                 maxLength={6}
-                                                className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold flex-1 tracking-[1em] text-center" 
+                                                className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold flex-1 tracking-[1em] text-center"
                                             />
-                                            <Button 
+                                            <Button
                                                 onClick={handleSubmitAadhaarOTP}
                                                 disabled={isVerifyingInstant || aadhaarOTP.length !== 6}
                                                 className="h-12 px-8 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl font-black text-[10px] uppercase tracking-widest"
@@ -689,10 +687,10 @@ export default function SettingsPage() {
                                     </motion.div>
                                 )}
                                 <div className="p-10 border-2 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center justify-center space-y-4 hover:border-indigo-200 transition-all cursor-pointer bg-slate-50/20 group">
-                                     <div className="h-14 w-14 bg-white rounded-2xl shadow-xl flex items-center justify-center text-slate-300 group-hover:text-indigo-600 group-hover:scale-110 transition-all">
+                                    <div className="h-14 w-14 bg-white rounded-2xl shadow-xl flex items-center justify-center text-slate-300 group-hover:text-indigo-600 group-hover:scale-110 transition-all">
                                         <FileText size={24} />
-                                     </div>
-                                     <p className="text-[10px] font-black uppercase tracking-[3px] text-slate-400 italic">Inject ID Document (PNG/PDF)</p>
+                                    </div>
+                                    <p className="text-[10px] font-black uppercase tracking-[3px] text-slate-400 italic">Inject ID Document (PNG/PDF)</p>
                                 </div>
                             </div>
 
@@ -710,9 +708,9 @@ export default function SettingsPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Legal Structure</Label>
-                                            <select 
+                                            <select
                                                 value={kycFormData.companyType}
-                                                onChange={(e) => setKycFormData({...kycFormData, companyType: e.target.value})}
+                                                onChange={(e) => setKycFormData({ ...kycFormData, companyType: e.target.value })}
                                                 className="h-12 w-full bg-white border border-slate-100 rounded-xl px-4 text-sm font-bold text-slate-900 focus:outline-none"
                                             >
                                                 <option value="Private Ltd">Private Limited (Pvt Ltd)</option>
@@ -722,29 +720,29 @@ export default function SettingsPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">CIN / Registration Number</Label>
-                                            <Input value={kycFormData.registrationNumber} onChange={(e) => setKycFormData({...kycFormData, registrationNumber: e.target.value})} placeholder="e.g. U74999DL2023..." className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold" />
+                                            <Input value={kycFormData.registrationNumber} onChange={(e) => setKycFormData({ ...kycFormData, registrationNumber: e.target.value })} placeholder="e.g. U74999DL2023..." className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold" />
                                         </div>
-                                         <div className="space-y-2 opacity-60">
+                                        <div className="space-y-2 opacity-60">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Official Domain</Label>
                                             <Input value={user.website || ''} disabled className="h-12 bg-slate-50 border-slate-100 rounded-xl px-4 text-sm font-bold" />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Institutional Thesis (Short)</Label>
-                                        <textarea 
-                                            value={kycFormData.businessDescription} 
-                                            onChange={(e) => setKycFormData({...kycFormData, businessDescription: e.target.value})}
+                                        <textarea
+                                            value={kycFormData.businessDescription}
+                                            onChange={(e) => setKycFormData({ ...kycFormData, businessDescription: e.target.value })}
                                             className="w-full min-h-[120px] p-5 bg-white border border-slate-100 rounded-[24px] text-sm font-medium focus:outline-none italic"
                                             placeholder="What exact disturbance is your entity resolving?"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Co-founder Alignment (Emails)</Label>
-                                        <Input 
-                                            value={kycFormData.coFounderEmails?.join(", ") || ""} 
-                                            onChange={(e) => setKycFormData({...kycFormData, coFounderEmails: e.target.value.split(",").map(em => em.trim())})}
-                                            placeholder="founder2@entity.com, founder3@entity.com" 
-                                            className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold" 
+                                        <Input
+                                            value={kycFormData.coFounderEmails?.join(", ") || ""}
+                                            onChange={(e) => setKycFormData({ ...kycFormData, coFounderEmails: e.target.value.split(",").map(em => em.trim()) })}
+                                            placeholder="founder2@entity.com, founder3@entity.com"
+                                            className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold"
                                         />
                                         <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest px-1 italic">Separate multiple emails with commas.</p>
                                     </div>
@@ -756,31 +754,31 @@ export default function SettingsPage() {
                                         <div className="h-px flex-1 bg-slate-50" />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                         <div className="space-y-2 opacity-60">
+                                        <div className="space-y-2 opacity-60">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Desk Classification</Label>
                                             <Input value={user.investorType || ''} disabled className="h-12 bg-slate-50 border-slate-100 rounded-xl px-4 text-sm font-bold" />
                                         </div>
-                                         <div className="space-y-2 opacity-60">
+                                        <div className="space-y-2 opacity-60">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Official LinkedIn / Portal</Label>
                                             <Input value={user.website || ''} disabled className="h-12 bg-slate-50 border-slate-100 rounded-xl px-4 text-sm font-bold" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Institutional Ticket Size (Range)</Label>
-                                            <Input 
-                                                value={kycFormData.investmentRange} 
-                                                onChange={(e) => setKycFormData({...kycFormData, investmentRange: e.target.value})}
-                                                placeholder="e.g. $10K - $100K" 
-                                                className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold" 
+                                            <Input
+                                                value={kycFormData.investmentRange}
+                                                onChange={(e) => setKycFormData({ ...kycFormData, investmentRange: e.target.value })}
+                                                placeholder="e.g. $10K - $100K"
+                                                className="h-12 border-slate-100 bg-white rounded-xl px-4 text-sm font-bold"
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Historical Deployments (Optional)</Label>
-                                        <textarea 
-                                             value={kycFormData.pastInvestments} 
-                                             onChange={(e) => setKycFormData({...kycFormData, pastInvestments: e.target.value})}
-                                             className="w-full min-h-[120px] p-5 bg-white border border-slate-100 rounded-[24px] text-sm font-medium focus:outline-none italic"
-                                             placeholder="List key portfolio exits or strategic deployments..."
+                                        <textarea
+                                            value={kycFormData.pastInvestments}
+                                            onChange={(e) => setKycFormData({ ...kycFormData, pastInvestments: e.target.value })}
+                                            className="w-full min-h-[120px] p-5 bg-white border border-slate-100 rounded-[24px] text-sm font-medium focus:outline-none italic"
+                                            placeholder="List key portfolio exits or strategic deployments..."
                                         />
                                     </div>
                                 </div>
@@ -793,7 +791,7 @@ export default function SettingsPage() {
                                         Submitting this form locks your institutional data for manual audit. Ensure all identification tracks are accurate.
                                     </p>
                                 </div>
-                                <Button 
+                                <Button
                                     onClick={handleKYCSubmit}
                                     disabled={isLoading}
                                     className="h-16 px-12 bg-slate-900 hover:bg-black text-white rounded-[24px] font-black uppercase text-xs tracking-[5px] italic shadow-2xl shadow-slate-200 transition-all hover-lift"
@@ -821,22 +819,22 @@ export default function SettingsPage() {
                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{isStartup ? "Target Funding Ask" : "Portfolio Ticket Size"}</Label>
                         <div className="relative">
                             <Zap size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" />
-                            <Input 
-                                value={user.funding || ''} 
-                                onChange={(e) => setUser({ ...user, funding: e.target.value })} 
-                                placeholder={isStartup ? "e.g. $1M Seed" : "e.g. $50K - $500K"} 
-                                className="h-14 pl-12 border-slate-100 bg-slate-50/30 rounded-[20px] text-lg font-black italic text-indigo-600 shadow-inner" 
+                            <Input
+                                value={user.funding || ''}
+                                onChange={(e) => setUser({ ...user, funding: e.target.value })}
+                                placeholder={isStartup ? "e.g. $1M Seed" : "e.g. $50K - $500K"}
+                                className="h-14 pl-12 border-slate-100 bg-slate-50/30 rounded-[20px] text-lg font-black italic text-indigo-600 shadow-inner"
                             />
                         </div>
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center italic mt-2">
-                           {isStartup ? "This value determines which investors see your pitch." : "This value filters startups reaching your desk."}
+                            {isStartup ? "This value determines which investors see your pitch." : "This value filters startups reaching your desk."}
                         </p>
                     </div>
 
                     {isInvestor && (
-                         <div className="space-y-1.5 pt-4">
+                        <div className="space-y-1.5 pt-4">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">Investor Classification</Label>
-                            <select 
+                            <select
                                 value={user.investorType || 'Individual'}
                                 onChange={(e) => setUser({ ...user, investorType: e.target.value })}
                                 className="h-12 w-full bg-slate-50 border border-slate-100 rounded-xl px-4 text-sm font-bold text-slate-900 focus:outline-none appearance-none cursor-pointer"
@@ -859,7 +857,7 @@ export default function SettingsPage() {
     );
 
     const renderNetwork = () => (
-         <Card className="border-slate-100 shadow-sm rounded-[32px] overflow-hidden bg-white border-2">
+        <Card className="border-slate-100 shadow-sm rounded-[32px] overflow-hidden bg-white border-2">
             <CardHeader className="p-10 border-b border-slate-50">
                 <CardTitle className="text-xl font-black text-slate-900 italic tracking-tight">{isStartup ? "Founding Network" : "Deployment History"}</CardTitle>
                 <CardDescription className="text-xs font-medium text-slate-400 mt-1">Manage institutional links and verified connections.</CardDescription>
@@ -867,19 +865,19 @@ export default function SettingsPage() {
             <CardContent className="p-10">
                 {isStartup ? (
                     <div className="space-y-8">
-                         <div className="space-y-3">
+                        <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Integrate Co-Founder</Label>
                             <div className="flex gap-4">
                                 <div className="relative flex-1">
                                     <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <Input 
+                                    <Input
                                         value={coFounderEmail}
                                         onChange={(e) => setCoFounderEmail(e.target.value)}
-                                        placeholder="founder@acme.ai" 
-                                        className="h-12 pl-12 border-slate-100 bg-white rounded-xl text-sm font-bold" 
+                                        placeholder="founder@acme.ai"
+                                        className="h-12 pl-12 border-slate-100 bg-white rounded-xl text-sm font-bold"
                                     />
                                 </div>
-                                <Button 
+                                <Button
                                     onClick={handleConnectCoFounder}
                                     disabled={isIntegratingCoFounder || !coFounderEmail}
                                     className="h-12 px-8 bg-indigo-600 text-white hover:bg-zinc-950 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all"
@@ -890,10 +888,10 @@ export default function SettingsPage() {
                         </div>
                         <div className="space-y-4">
                             <p className="text-[10px] font-black text-slate-300 uppercase tracking-[4px] px-1 italic">Active Founders</p>
-                            
+
                             {/* Primary User */}
                             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-xl transition-all">
-                                 <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4">
                                     <div className="h-12 w-12 bg-white border-2 border-slate-100 rounded-2xl flex items-center justify-center text-indigo-600 text-xl font-black italic">
                                         {user.name?.charAt(0)}
                                     </div>
@@ -901,8 +899,8 @@ export default function SettingsPage() {
                                         <p className="text-sm font-black text-slate-900 uppercase italic leading-none">{user.name}</p>
                                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Primary Originator</p>
                                     </div>
-                                 </div>
-                                 <Badge className="bg-indigo-600 text-white font-black text-[9px] uppercase tracking-[3px] h-6 px-3 italic">HODL</Badge>
+                                </div>
+                                <Badge className="bg-indigo-600 text-white font-black text-[9px] uppercase tracking-[3px] h-6 px-3 italic">HODL</Badge>
                             </div>
 
                             {/* Linked Co-Founders */}
@@ -982,7 +980,7 @@ export default function SettingsPage() {
             {/* Unified Top Navigation */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-8 py-6">
                 <div>
-                   <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-3">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-3">
                         <Activity size={12} className="text-indigo-600 animate-pulse" />
                         Platform Authority
                         <ChevronRight size={10} className="text-slate-200" />
@@ -992,7 +990,7 @@ export default function SettingsPage() {
                         Manage {isStartup ? "Startup" : "Investor"} Space.
                     </h1>
                 </div>
-                
+
                 <div className="hidden md:flex gap-4">
                     <div className="text-right">
                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Verified Presence</p>
@@ -1006,17 +1004,16 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
                 <div className="lg:col-span-3 space-y-6 lg:sticky lg:top-24">
-                     {/* Role-Agnostic Sidebar Menu */}
+                    {/* Role-Agnostic Sidebar Menu */}
                     <div className="bg-white border-2 border-slate-100 rounded-[32px] p-3 shadow-2xl shadow-slate-100 space-y-2">
                         {menuItems.map((item: any) => (
                             <button
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id)}
-                                className={`flex w-full items-center gap-4 px-6 py-4 rounded-2xl text-[12px] font-black transition-all uppercase italic tracking-tighter ${
-                                    activeTab === item.id
-                                    ? "bg-slate-900 text-white shadow-2xl shadow-slate-300 scale-[1.05] z-10"
-                                    : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                                }`}
+                                className={`flex w-full items-center gap-4 px-6 py-4 rounded-2xl text-[12px] font-black transition-all uppercase italic tracking-tighter ${activeTab === item.id
+                                        ? "bg-slate-900 text-white shadow-2xl shadow-slate-300 scale-[1.05] z-10"
+                                        : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                                    }`}
                             >
                                 <item.icon size={16} className={activeTab === item.id ? "text-indigo-400" : "text-slate-300"} />
                                 {item.label}
@@ -1026,13 +1023,13 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="p-8 rounded-[32px] bg-indigo-600 text-white relative overflow-hidden group shadow-2xl shadow-indigo-100">
-                         <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-125 transition-transform duration-700">
-                             {isStartup ? <PieChart size={100} /> : <TrendingUp size={100} />}
-                         </div>
-                         <h4 className="text-[11px] font-black uppercase tracking-[5px] text-indigo-200 mb-3">System Logic</h4>
-                         <p className="text-xs font-bold leading-relaxed italic opacity-90">
-                             Your institutional data is locked into the global matching engine. Changes sync instantly across the network.
-                         </p>
+                        <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-125 transition-transform duration-700">
+                            {isStartup ? <PieChart size={100} /> : <TrendingUp size={100} />}
+                        </div>
+                        <h4 className="text-[11px] font-black uppercase tracking-[5px] text-indigo-200 mb-3">System Logic</h4>
+                        <p className="text-xs font-bold leading-relaxed italic opacity-90">
+                            Your institutional data is locked into the global matching engine. Changes sync instantly across the network.
+                        </p>
                     </div>
                 </div>
 

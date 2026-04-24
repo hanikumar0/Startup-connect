@@ -6,9 +6,31 @@ import { createNotification } from "./notificationService.js";
 import emailService from "./emailService.js";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
-const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
+let isRedisUp = true;
+
+const connection = new IORedis(REDIS_URL, { 
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    retryStrategy: (times) => Math.min(times * 1000, 30000)
+});
+
+connection.on("error", (err) => {
+    if (isRedisUp) {
+        console.warn("⚠️ Meeting Queue: Redis connection lost. Reminders suspended.");
+        isRedisUp = false;
+    }
+});
+
+connection.on("connect", () => {
+    isRedisUp = true;
+    console.log("🚀 Meeting Queue: Redis connected.");
+});
 
 export const meetingQueue = new Queue("meeting_reminders", { connection });
+
+meetingQueue.on("error", (err) => {
+    // Suppress spammy bullmq error logs if disconnected
+});
 
 // Worker to handle reminders
 const worker = new Worker(
@@ -78,6 +100,11 @@ export const scheduleMeetingReminder = async (meeting) => {
     // 1. 30 Minutes before (Email)
     const reminder30 = new Date(startTime.getTime() - 30 * 60 * 1000);
     const delay30 = reminder30.getTime() - Date.now();
+
+    if (!isRedisUp) {
+        console.warn("[QUEUE] Skipping reminder scheduling: Redis is down.");
+        return;
+    }
 
     if (delay30 > 0) {
         await meetingQueue.add(

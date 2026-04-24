@@ -15,6 +15,15 @@ interface User {
   verificationStatus?: string;
   isPublic?: boolean;
   location?: string;
+  coFounders?: string[];
+  companyName?: string;
+  website?: string;
+  headline?: string;
+  focus?: string[];
+  lastHeadlineUpdate?: string | Date | null;
+  lastFocusUpdate?: string | Date | null;
+  stage?: string;
+  investorType?: string;
 }
 
 interface AuthState {

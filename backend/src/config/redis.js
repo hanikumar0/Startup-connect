@@ -15,12 +15,13 @@ try {
             if (times > MAX_RETRIES) {
                 if (!hasLoggedRedisError) {
                     hasLoggedRedisError = true;
-                    console.warn(`⚠️ Redis unavailable after ${MAX_RETRIES} retries — using fallback.`);
+                    console.warn(`⚠️ Redis unavailable after ${MAX_RETRIES} retries — starting backoff mode.`);
                 }
-                return null;
+                // Once we exceed MAX_RETRIES, we retry every 30 seconds to keep logs quiet
+                return 30000;
             }
             const delay = Math.min(times * 1000, 5000);
-            if (times === 1) console.warn("🕒 Redis: Connection lost. Retrying...");
+            if (times === 1) console.warn("🕒 Redis: Connection lost. Attempting recovery...");
             return delay;
         },
         tls: REDIS_URL.startsWith("rediss://") ? {} : undefined,
@@ -34,17 +35,26 @@ try {
         isRedisAvailable = true;
         hasLoggedRedisError = false;
         console.log("🚀 Redis connected successfully");
-        // Force noeviction policy to prevent data loss of operational stats
         redis.config("SET", "maxmemory-policy", "noeviction").catch(() => {});
     });
 
     redis.on("error", (err) => {
         isRedisAvailable = false;
-        if (!hasLoggedRedisError) {
+        
+        // Suppress repeated logs for common failures (DNS, Timeout, Refused)
+        const isCommonError = ["ENOTFOUND", "ETIMEDOUT", "ECONNREFUSED"].includes(err.code);
+        
+        if (!hasLoggedRedisError || !isCommonError) {
+            if (isCommonError && hasLoggedRedisError) return; // Already logged once
+            
             hasLoggedRedisError = true;
-            console.warn("⚠️ Redis connection issue (using fallback):", err.message);
+            if (err.code === "ENOTFOUND") {
+                console.warn("❌ Redis Host Unreachable: The endpoint in .env is invalid or down.");
+            } else {
+                console.warn("⚠️ Redis connection issue:", err.message);
+            }
+            console.info("💡 Application will use in-memory fallback for non-critical tasks.");
         }
-        // Suppress repeated error logs
     });
 } catch (error) {
     console.error("❌ Redis initialization failed:", error);
