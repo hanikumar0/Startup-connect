@@ -37,6 +37,11 @@ export function StartupCard({ startup, onSave, isSaved }: StartupCardProps) {
                     {startup.fitScore}% Fit
                 </Badge>
               )}
+              {startup.isRaising && (
+                <Badge className="h-6 px-2 text-[10px] font-bold border-none bg-zinc-950 text-white animate-pulse">
+                    RAISING {startup.roundType || 'ROUND'}
+                </Badge>
+              )}
             </div>
             <Button 
                 variant="ghost" 

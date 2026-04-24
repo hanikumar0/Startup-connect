@@ -48,6 +48,7 @@ import fundingScoreRoutes from "./routes/fundingScoreRoutes.js";
 import fitScoreRoutes from "./routes/fitScoreRoutes.js";
 import introRoutes from "./routes/introRoutes.js";
 import crmRoutes from "./routes/crmRoutes.js";
+import raiseRoutes from "./routes/raiseRoutes.js";
 import passport from "./config/passport.js";
 import mongoose from "mongoose";
 import AppError from "./utils/AppError.js";
@@ -170,6 +171,7 @@ app.use("/api/funding-score", fundingScoreRoutes);
 app.use("/api/ai/fit-score", fitScoreRoutes);
 app.use("/api/intros", introRoutes);
 app.use("/api/crm", crmRoutes);
+app.use("/api/raise", raiseRoutes);
 
 // Error Handling
 app.all("*", (req, res, next) => {

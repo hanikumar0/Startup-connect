@@ -17,7 +17,8 @@ import {
   Bell,
   LogOut,
   Zap,
-  Sparkles
+  Sparkles,
+  TrendingUp
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
 
@@ -28,6 +29,7 @@ export function Sidebar() {
 
   const mainNavItems = [
     { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Raise Tracker", href: "/dashboard/raise", icon: TrendingUp },
     { label: "Relationship CRM", href: "/dashboard/crm", icon: Target },
     { label: "Discover", href: "/dashboard/discover", icon: Search },
     { label: "Connections", href: "/dashboard/network", icon: Users },
