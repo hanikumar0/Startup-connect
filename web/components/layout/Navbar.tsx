@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import NotificationDropdown from "@/components/notifications/NotificationDropdown";
 
 export function Navbar() {
   const { user, logout } = useAuthStore();
@@ -59,9 +60,8 @@ export function Navbar() {
                   <MessageSquare className="h-5 w-5 group-hover:-translate-y-0.5 transition-transform" />
               </Button>
            </Link>
-           <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-slate-900 transition-all rounded-2xl group relative">
-              <Bell className="h-5 w-5 group-hover:rotate-12 transition-transform" />
-           </Button>
+           {/* Live Notification Dropdown */}
+           <NotificationDropdown />
         </div>
 
         <div className="h-8 w-px bg-slate-100 mx-2 hidden lg:block" />

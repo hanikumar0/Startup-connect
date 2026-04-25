@@ -29,6 +29,8 @@ import {
 import { FundingReadinessCard } from "@/components/cards/FundingReadinessCard";
 import { TopMatchesWidget } from "@/components/dashboard/TopMatchesWidget";
 import { IntroRequestsWidget } from "@/components/dashboard/IntroRequestsWidget";
+import { GrantsWidget } from "@/components/dashboard/GrantsWidget";
+import { TrustBadgeCard } from "@/components/dashboard/TrustBadgeCard";
 import CRMStatsWidget from "@/components/crm/CRMStatsWidget";
 import { useAuthStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -280,26 +282,11 @@ export default function UnifiedDashboard() {
                     {/* NEW: AI Funding Readiness Score */}
                     {isStartup && <FundingReadinessCard />}
 
-                    {/* Verification Card */}
-                    <Card className="rounded-[32px] border-none shadow-xl bg-indigo-600 text-white overflow-hidden relative group">
-                        <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform duration-700 pointer-events-none">
-                            <ShieldCheck size={180} />
-                        </div>
-                        <CardContent className="p-10 space-y-8 relative z-10">
-                             <div className="space-y-3">
-                                <h3 className="text-2xl font-bold tracking-tight">Verification</h3>
-                                <p className="text-[13px] text-indigo-100 leading-relaxed font-medium opacity-80">
-                                    Complete E-KYC to unlock premium {isStartup ? 'investor' : 'startup'} matching and institutional visibility.
-                                </p>
-                            </div>
-                             <Button 
-                                onClick={() => router.push('/dashboard/settings/verification')}
-                                className="w-full h-14 bg-white text-indigo-600 font-bold text-[11px] uppercase tracking-wider rounded-2xl hover:bg-slate-50 shadow-lg shadow-indigo-900/20"
-                            >
-                                Start E-KYC
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    {/* Trust Layer Badge Card */}
+                    <TrustBadgeCard />
+
+                    {/* Grants & Opportunities Widget */}
+                    <GrantsWidget />
 
                     {/* Meetings */}
                     <section className="space-y-6">

@@ -18,7 +18,8 @@ import {
   LogOut,
   Zap,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Trophy
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
 
@@ -32,8 +33,10 @@ export function Sidebar() {
     { label: "Raise Tracker", href: "/dashboard/raise", icon: TrendingUp },
     { label: "Relationship CRM", href: "/dashboard/crm", icon: Target },
     { label: "Discover", href: "/dashboard/discover", icon: Search },
+    { label: "Grants & Programs", href: "/dashboard/grants", icon: Trophy },
     { label: "Connections", href: "/dashboard/network", icon: Users },
     { label: "Messages", href: "/dashboard/chat", icon: MessageSquare },
+    { label: "Smart Alerts", href: "/dashboard/alerts", icon: Bell },
     { label: "Market Intel", href: "/dashboard/intelligence", icon: Sparkles },
     { label: "Meetings", href: "/dashboard/meetings", icon: Calendar },
     { label: "Data Rooms", href: "/dashboard/vdr", icon: ShieldCheck },

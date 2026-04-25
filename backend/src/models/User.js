@@ -130,7 +130,46 @@ const userSchema = new mongoose.Schema(
             cancelledMeetings: { type: Number, default: 0 },
             rescheduledMeetings: { type: Number, default: 0 },
             noShows: { type: Number, default: 0 },
-        }
+        },
+
+        // === FEATURE 7: Verified Badges / Trust Layer ===
+        badges: [{
+            type: String,
+            enum: [
+                // Startup badges
+                "verified_startup", "registered_company", "raising_now",
+                "high_traction", "active_founder", "top_rated_startup",
+                // Investor badges
+                "verified_investor", "active_investor", "recent_investor",
+                "trusted_vc", "fast_responder", "premium_investor",
+                // Mentor badges
+                "trusted_mentor", "expert_advisor", "top_connector",
+            ]
+        }],
+        verificationStatus: {
+            type: String,
+            enum: ["unverified", "pending", "verified", "rejected"],
+            default: "unverified",
+        },
+        badgesAwardedAt: { type: Date },
+        badgesRevokedAt: { type: Date },
+        trustScore: { type: Number, default: 0, min: 0, max: 100 },
+
+        // === FEATURE 8: Smart Alerts Preferences ===
+        alertPreferences: {
+            enabled: { type: Boolean, default: true },
+            mode: {
+                type: String,
+                enum: ["instant", "daily_digest", "weekly_digest"],
+                default: "instant",
+            },
+            emailAlerts: { type: Boolean, default: true },
+            investorMatch: { type: Boolean, default: true },
+            profileViewed: { type: Boolean, default: true },
+            grantAlerts: { type: Boolean, default: true },
+            meetingReminders: { type: Boolean, default: true },
+            marketingAlerts: { type: Boolean, default: false },
+        },
     },
     { timestamps: true }
 );

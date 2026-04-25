@@ -11,6 +11,7 @@ import cron from "node-cron";
 import { runMasterIngestion } from "./services/externalIngestionService.js";
 import { initIntelligenceScheduler } from "./intelligence/scheduler.js";
 import { initNewsScheduler } from "./news/news.scheduler.js";
+import Grant from "./models/Grant.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import startupRoutes from "./routes/startupRoutes.js";
@@ -49,6 +50,8 @@ import fitScoreRoutes from "./routes/fitScoreRoutes.js";
 import introRoutes from "./routes/introRoutes.js";
 import crmRoutes from "./routes/crmRoutes.js";
 import raiseRoutes from "./routes/raiseRoutes.js";
+import grantRoutes from "./routes/grantRoutes.js";
+import badgeRoutes from "./routes/badgeRoutes.js";
 import passport from "./config/passport.js";
 import mongoose from "mongoose";
 import AppError from "./utils/AppError.js";
@@ -172,6 +175,8 @@ app.use("/api/ai/fit-score", fitScoreRoutes);
 app.use("/api/intros", introRoutes);
 app.use("/api/crm", crmRoutes);
 app.use("/api/raise", raiseRoutes);
+app.use("/api/grants", grantRoutes);
+app.use("/api/badges", badgeRoutes);
 
 // Error Handling
 app.all("*", (req, res, next) => {
@@ -217,5 +222,30 @@ cron.schedule("0 */12 * * *", () => {
 runMasterIngestion().catch(err => logger.error({ err }, "Startup: Master Ingestion failed"));
 initIntelligenceScheduler();
 initNewsScheduler();
+
+// Auto-seed grants if empty
+(async () => {
+    try {
+        const count = await Grant.countDocuments();
+        if (count === 0) {
+            logger.info("[Grants] No grants found, triggering auto-seed...");
+            const { seedGrants } = await import("./controllers/grantController.js");
+            // Call seed directly
+            const mock = {
+                body: {},
+                user: { id: null },
+            };
+            const mockRes = {
+                json: (d) => logger.info({ count: d }, "[Grants] Auto-seed result"),
+                status: () => ({ json: () => {} }),
+            };
+            await seedGrants(mock, mockRes);
+        } else {
+            logger.info({ count }, "[Grants] Grants already seeded");
+        }
+    } catch (err) {
+        logger.warn({ err }, "[Grants] Auto-seed check failed (non-critical)");
+    }
+})();
 
 export default app;
