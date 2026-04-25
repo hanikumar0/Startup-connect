@@ -57,72 +57,74 @@ const VDRRoomScreen = ({ route, navigation }) => {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { borderBottomColor: theme.border }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: theme.muted }]}>
-                    <ChevronLeft color={theme.foreground} size={20} />
-                </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                    <Text style={[styles.headerTitle, { color: theme.foreground }]} numberOfLines={1}>{title.toUpperCase()}</Text>
-                    <Text style={[styles.headerSubtitle, { color: theme.mutedForeground }]}>SECURE REPOSITORY</Text>
-                </View>
-                <TouchableOpacity style={[styles.infoBtn, { backgroundColor: theme.muted }]}>
-                    <Info color={theme.foreground} size={18} />
-                </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                <Animated.View entering={FadeIn} style={[styles.securityBanner, { backgroundColor: '#10b98110' }]}>
-                    <ShieldCheck color="#10b981" size={14} />
-                    <Text style={styles.securityText}>AES-256 END-TO-END ENCRYPTION ACTIVE</Text>
-                </Animated.View>
-
-                <Text style={[styles.sectionTitle, { color: theme.mutedForeground }]}>ASSETS ({files.length})</Text>
-
-                {files.length > 0 ? (
-                    files.map((file, i) => (
-                        <Animated.View key={file._id} entering={FadeInDown.delay(i * 100)}>
-                            <TouchableOpacity 
-                                style={[styles.fileCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-                                onPress={() => file.url && Linking.openURL(file.url)}
-                            >
-                                <View style={[styles.fileIcon, { backgroundColor: getFileIconColor(file.type) + '15' }]}>
-                                    <FileText color={getFileIconColor(file.type)} size={24} />
-                                </View>
-                                <View style={styles.fileInfo}>
-                                    <Text style={[styles.fileName, { color: theme.foreground }]} numberOfLines={1}>{file.originalName.toUpperCase() || 'UNTITLED ASSET'}</Text>
-                                    <View style={styles.fileMeta}>
-                                        <Text style={[styles.metaText, { color: theme.mutedForeground }]}>{(file.size / 1024 / 1024).toFixed(2)} MB</Text>
-                                        <View style={[styles.metaDot, { backgroundColor: theme.border }]} />
-                                        <Text style={[styles.metaText, { color: theme.mutedForeground }]}>{new Date(file.createdAt).toLocaleDateString().toUpperCase()}</Text>
-                                    </View>
-                                </View>
-                                <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: theme.muted }]} onPress={() => file.url && Linking.openURL(file.url)}>
-                                    <FileDown color={theme.foreground} size={18} />
-                                </TouchableOpacity>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    ))
-                ) : (
-                    <Animated.View entering={FadeIn} style={styles.emptyState}>
-                        <View style={[styles.emptyIconBox, { backgroundColor: theme.muted }]}>
-                            <FileText color={theme.mutedForeground} size={48} strokeWidth={1} />
-                        </View>
-                        <Text style={[styles.emptyTitle, { color: theme.foreground }]}>VAULT EMPTY</Text>
-                        <Text style={[styles.emptySubtitle, { color: theme.mutedForeground }]}>No documents have been synchronized to this room yet.</Text>
-                    </Animated.View>
-                )}
-
-                <Animated.View entering={FadeInDown.delay(400)} style={[styles.helpBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '20' }]}>
-                    <MessageCircle color={theme.primary} size={20} />
-                    <View style={styles.helpTextContent}>
-                        <Text style={[styles.helpTitle, { color: theme.primary }]}>DUE DILIGENCE ASSISTANCE</Text>
-                        <Text style={[styles.helpSubtitle, { color: isDark ? '#a5b4fc' : '#4338ca' }]}>Message the custodian directly for clarification or additional documentation access.</Text>
+            <Animated.View entering={FadeIn} style={{ flex: 1 }}>
+                <View style={[styles.header, { borderBottomColor: theme.border }]}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: theme.muted }]}>
+                        <ChevronLeft color={theme.foreground} size={20} />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleContainer}>
+                        <Text style={[styles.headerTitle, { color: theme.foreground }]} numberOfLines={1}>{title.toUpperCase()}</Text>
+                        <Text style={[styles.headerSubtitle, { color: theme.mutedForeground }]}>SECURE REPOSITORY</Text>
                     </View>
-                </Animated.View>
-                
-                <View style={{ height: 40 }} />
-            </ScrollView>
-        </Animated.View>
+                    <TouchableOpacity style={[styles.infoBtn, { backgroundColor: theme.muted }]}>
+                        <Info color={theme.foreground} size={18} />
+                    </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                    <Animated.View entering={FadeIn} style={[styles.securityBanner, { backgroundColor: '#10b98110' }]}>
+                        <ShieldCheck color="#10b981" size={14} />
+                        <Text style={styles.securityText}>AES-256 END-TO-END ENCRYPTION ACTIVE</Text>
+                    </Animated.View>
+
+                    <Text style={[styles.sectionTitle, { color: theme.mutedForeground }]}>ASSETS ({files.length})</Text>
+
+                    {files.length > 0 ? (
+                        files.map((file, i) => (
+                            <Animated.View key={file._id} entering={FadeInDown.delay(i * 100)}>
+                                <TouchableOpacity 
+                                    style={[styles.fileCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                                    onPress={() => file.url && Linking.openURL(file.url)}
+                                >
+                                    <View style={[styles.fileIcon, { backgroundColor: getFileIconColor(file.type) + '15' }]}>
+                                        <FileText color={getFileIconColor(file.type)} size={24} />
+                                    </View>
+                                    <View style={styles.fileInfo}>
+                                        <Text style={[styles.fileName, { color: theme.foreground }]} numberOfLines={1}>{file.originalName.toUpperCase() || 'UNTITLED ASSET'}</Text>
+                                        <View style={styles.fileMeta}>
+                                            <Text style={[styles.metaText, { color: theme.mutedForeground }]}>{(file.size / 1024 / 1024).toFixed(2)} MB</Text>
+                                            <View style={[styles.metaDot, { backgroundColor: theme.border }]} />
+                                            <Text style={[styles.metaText, { color: theme.mutedForeground }]}>{new Date(file.createdAt).toLocaleDateString().toUpperCase()}</Text>
+                                        </View>
+                                    </View>
+                                    <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: theme.muted }]} onPress={() => file.url && Linking.openURL(file.url)}>
+                                        <FileDown color={theme.foreground} size={18} />
+                                    </TouchableOpacity>
+                                </TouchableOpacity>
+                            </Animated.View>
+                        ))
+                    ) : (
+                        <Animated.View entering={FadeIn} style={styles.emptyState}>
+                            <View style={[styles.emptyIconBox, { backgroundColor: theme.muted }]}>
+                                <FileText color={theme.mutedForeground} size={48} strokeWidth={1} />
+                            </View>
+                            <Text style={[styles.emptyTitle, { color: theme.foreground }]}>VAULT EMPTY</Text>
+                            <Text style={[styles.emptySubtitle, { color: theme.mutedForeground }]}>No documents have been synchronized to this room yet.</Text>
+                        </Animated.View>
+                    )}
+
+                    <Animated.View entering={FadeInDown.delay(400)} style={[styles.helpBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '20' }]}>
+                        <MessageCircle color={theme.primary} size={20} />
+                        <View style={styles.helpTextContent}>
+                            <Text style={[styles.helpTitle, { color: theme.primary }]}>DUE DILIGENCE ASSISTANCE</Text>
+                            <Text style={[styles.helpSubtitle, { color: isDark ? '#a5b4fc' : '#4338ca' }]}>Message the custodian directly for clarification or additional documentation access.</Text>
+                        </View>
+                    </Animated.View>
+                    
+                    <View style={{ height: 40 }} />
+                </ScrollView>
+            </Animated.View>
+        </SafeAreaView>
     );
 };
 
