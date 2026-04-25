@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Startup Connect",
+    "slug": "startup-connect",
+    "scheme": "startup-connect",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.startupconnect.app"
+    },
+    "android": {
+      "package": "com.startupconnect.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "jsEngine": "hermes"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-web-browser",
+      "expo-secure-store",
+      "expo-font"
+    ]
+  }
+}
