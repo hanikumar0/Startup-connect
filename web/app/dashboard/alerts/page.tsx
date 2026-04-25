@@ -11,7 +11,6 @@ import { apiFetchJSON } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -128,10 +127,15 @@ function PreferencesPanel({ onClose }: { onClose: () => void }) {
                 <p className="text-sm font-bold text-slate-800">{label}</p>
                 <p className="text-[10px] text-slate-400">{desc}</p>
               </div>
-              <Switch
-                checked={prefs[key] ?? true}
-                onCheckedChange={(v) => handleToggle(key, v)}
-              />
+              <button
+                type="button"
+                role="switch"
+                aria-checked={prefs[key] ?? true}
+                onClick={() => handleToggle(key, !(prefs[key] ?? true))}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none ${(prefs[key] ?? true) ? 'bg-indigo-600' : 'bg-slate-200'}`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition duration-200 ${(prefs[key] ?? true) ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
           ))}
         </div>
