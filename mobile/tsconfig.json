@@ -6,7 +6,6 @@
     "isolatedModules": true,
     "jsx": "react-native",
     "lib": [
-      "dom",
       "esnext"
     ],
     "module": "esnext",

@@ -1,8 +1,12 @@
+import 'react-native-gesture-handler';
+console.log('[DEBUG] index.js: starting...');
+import { Buffer } from 'buffer';
+global.Buffer = global.Buffer || Buffer;
+console.log('[DEBUG] index.js: Buffer polyfilled');
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
+console.log('[DEBUG] index.js: registering root component');
 registerRootComponent(App);
