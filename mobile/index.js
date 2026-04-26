@@ -1,3 +1,4 @@
+import 'react-native-reanimated';
 import 'react-native-gesture-handler';
 console.log('[DEBUG] index.js: starting...');
 import { Buffer } from 'buffer';
