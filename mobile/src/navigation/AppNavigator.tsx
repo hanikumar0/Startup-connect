@@ -22,6 +22,7 @@ import MeetingsScreen from '../screens/MeetingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatScreen from '../screens/ChatScreen';
 import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 
 function TabNavigator() {
   return (
@@ -113,7 +114,10 @@ export default function AppNavigator() {
       screenOptions={{ headerShown: false }}
     >
       {!user ? (
-        <Stack.Screen name="Login" component={LoginScreen} />
+        <>
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+        </>
       ) : (
         <>
           <Stack.Screen name="MainTabs" component={TabNavigator} />

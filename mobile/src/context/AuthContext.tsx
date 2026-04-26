@@ -18,10 +18,9 @@ export const AuthProvider = ({ children }: any) => {
       const savedUser = await AsyncStorage.getItem('userData');
       if (token && savedUser) {
         setUser(JSON.parse(savedUser));
-        setLoading(false);
       }
     } catch (e) {
-      console.log(e);
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -48,8 +47,32 @@ export const AuthProvider = ({ children }: any) => {
     setUser(null);
   };
 
+  const sendOTP = async (email: string) => {
+    try {
+      const res = await api.post('/auth/send-otp', { email });
+      return { success: res.data.success, message: res.data.message };
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message || 'Failed to send verification code' };
+    }
+  };
+
+  const registerVerify = async (data: any) => {
+    try {
+      const res = await api.post('/auth/register-verify', data);
+      if (res.data.success) {
+        const { token, user: userData } = res.data;
+        await AsyncStorage.setItem('userToken', token);
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+        setUser(userData);
+        return { success: true };
+      }
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message || 'Verification failed' };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, sendOTP, registerVerify }}>
       {children}
     </AuthContext.Provider>
   );

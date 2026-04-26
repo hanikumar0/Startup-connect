@@ -18,6 +18,25 @@ Discover · Connect · Collaborate · Close Deals
 
 ---
 
+## 🆕 Recent Updates (April 2026)
+
+### 📱 Premium Mobile Experience
+- **Strategic UI Overhaul**: Implemented a high-fidelity design system mirroring the web platform's "Institutional" aesthetic.
+- **Multi-Step Registration**: Added a streamlined 3-step onboarding (Profile -> Role -> OTP Verification).
+- **Secure Authentication**: Integrated real-time **OTP verification** via backend services for institutional security.
+- **Android Optimization**: Fixed host-loopback connectivity issues for Android emulators (10.0.2.2).
+
+### 📰 Market Intelligence Hub
+- **Automated Ingestion**: Real-time scraping of news, events, and grants using Playwright and SerpApi.
+- **AI Summarization**: Intelligent digest generation using Google Gemini to provide actionable market insights.
+- **Grant Pipeline**: Automated matching of startup profiles to newly ingested grant opportunities.
+
+### 🛡️ Institutional Security & Infrastructure
+- **MFA & Verified Identities**: Enhanced KYC verification and Multi-Factor Authentication via Twilio.
+- **Stabilized Environment**: Resolved version mismatches and bundling errors in the React Native New Architecture (Fabric).
+
+---
+
 ## 📋 Table of Contents
 
 1. [Overview](#-overview)
@@ -148,6 +167,19 @@ External Services:
 | **PyMuPDF** | PDF parsing (pitch decks) |
 | **pandas / numpy** | Data processing |
 
+### Mobile App (`/mobile`)
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| **Expo** | 55.x | React Native managed framework |
+| **React Native** | 0.83.6 | Native mobile framework (New Arch / Fabric) |
+| **React Navigation** | 7.x | Stack, Tab, and Drawer navigation |
+| **Lucide React Native** | 0.563 | Premium icon system |
+| **Reanimated** | 4.x | Gesture-based fluid animations |
+| **Async Storage** | 2.2 | Local data persistence |
+| **Socket.IO Client** | 4.8 | Real-time institutional messaging |
+| **WebRTC** | 124.x | Peer-to-peer video/audio protocols |
+| **Google Fonts (Inter)** | Latest | Strategic typography system |
+
 ---
 
 ## 📁 Project Structure
@@ -225,7 +257,20 @@ startup-connect/
 │   ├── engine.py                 # AI matching & recommendation engine
 │   └── scrapers/                 # Python-based scrapers
 │
-├── mobile/                       # React Native (Expo) - in progress
+├── mobile/                       # React Native (Expo) - Premium Mobile App
+│   ├── src/
+│   │   ├── screens/
+│   │   │   ├── LoginScreen.tsx       # Premium "Hi Again" UI
+│   │   │   ├── RegisterScreen.tsx    # Multi-step (Info -> Role -> OTP)
+│   │   │   ├── DiscoverScreen.tsx    # Deal & Startup discovery
+│   │   │   └── ChatScreen.tsx        # Real-time messaging
+│   │   ├── context/
+│   │   │   └── AuthContext.tsx       # JWT + OTP Auth management
+│   │   └── navigation/
+│   │       └── AppNavigator.tsx      # Stack & Tab navigation
+│   ├── App.tsx                       # Root component with Theme/Auth
+│   └── app.json                      # Expo configuration (SDK 55)
+│
 ├── docker-compose.yml            # Multi-service Docker setup
 ├── render.yaml                   # Render.com deployment blueprint
 └── .env.example                  # Environment variable template
@@ -277,6 +322,13 @@ startup-connect/
 - Stats dashboard (total, pinned, favorites by type)
 - Recently Viewed integration
 - AI Recommendations section
+
+### 📰 Market Intelligence Hub (New ✨)
+- **Real-time ingestion** of news, events, and grants from 40+ trusted sources.
+- **AI-driven summarization** for quick institutional insights.
+- **Grant discovery pipeline** — automatically matched to startup profiles.
+- **Event tracking** — never miss a networking opportunity.
+- **Market trends** — visualized in the dashboard.
 
 ### 💬 Real-time Messaging
 - Socket.IO powered chat rooms
@@ -788,11 +840,22 @@ Services started:
 
 ---
 
-## 📱 Mobile App
+## 📱 Mobile App (Strategic Connect)
 
-A React Native (Expo) mobile app is under development in the `/mobile` directory.
+The mobile application is a high-performance **React Native (Expo)** app designed for "on-the-go" institutional networking.
 
-Status: 🚧 **In Progress**
+### Latest Features:
+- **Premium UI/UX**: High-fidelity design mirroring the web application with Inter 900+ typography and high-contrast branding.
+- **Strategic Auth**: Multi-step registration flow including real-time **OTP verification** via backend integration.
+- **Institutional Gateway**: Role-aware interface for Founders and Investors.
+- **Android Ready**: Optimized for Android emulators with pre-configured host-loopback connectivity.
+
+### Running Mobile:
+```bash
+cd mobile
+npm install
+npx expo start --android
+```
 
 ---
 
