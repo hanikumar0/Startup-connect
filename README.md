@@ -41,16 +41,17 @@ Discover · Connect · Collaborate · Close Deals
 
 1. [Overview](#-overview)
 2. [Architecture](#-architecture)
-3. [Tech Stack](#-tech-stack)
-4. [Project Structure](#-project-structure)
-5. [Features](#-features)
-6. [Getting Started](#-getting-started)
-7. [Environment Variables](#-environment-variables)
-8. [API Reference](#-api-reference)
-9. [Database Models](#-database-models)
-10. [Deployment](#-deployment)
-11. [Docker Setup](#-docker-setup)
-12. [Contributing](#-contributing)
+3. [Methodology](#-methodology)
+4. [Tech Stack](#-tech-stack)
+5. [Project Structure](#-project-structure)
+6. [Features](#-features)
+7. [Getting Started](#-getting-started)
+8. [Environment Variables](#-environment-variables)
+9. [API Reference](#-api-reference)
+10. [Database Models](#-database-models)
+11. [Deployment](#-deployment)
+12. [Docker Setup](#-docker-setup)
+13. [Contributing](#-contributing)
 
 ---
 
@@ -110,6 +111,65 @@ External Services:
   ├─ Google Meet / Zoom / MS Teams (Meetings)
   ├─ SurePass (KYC Verification)
   └─ ProductHunt / GitHub / Apify (Data Ingestion)
+```
+
+---
+
+## 📊 Methodology
+
+Startup Connect employs a multi-tiered methodology to facilitate seamless startup-investor interactions, moving from data-driven intelligence to secure deal finalization.
+
+```mermaid
+graph TD
+    subgraph "Phase 1: Intelligence Ingestion"
+        A1[<b>Market Data Scrapers</b><br/>Playwright & SerpApi]
+        A2[<b>External Leads</b><br/>ProductHunt & GitHub]
+        A3[<b>User Input</b><br/>Deep Profile Builder]
+    end
+
+    subgraph "Phase 2: AI Processing Core"
+        B1[<b>Vectorization</b><br/>Sentence Transformers]
+        B2[<b>Intelligent Matching</b><br/>Cosine Similarity]
+        B3[<b>AI Coach</b><br/>Gemini Pitch Feedback]
+    end
+
+    subgraph "Phase 3: Engagement & Outreach"
+        C1[<b>Discovery Engine</b><br/>Role-Aware Filtering]
+        C2[<b>Communication Hub</b><br/>Real-time Messaging]
+        C3[<b>Trust Metrics</b><br/>Verified Identity KYC]
+    end
+
+    subgraph "Phase 4: Deal Execution"
+        D1[<b>Orchestration</b><br/>Meeting Scheduler]
+        D2[<b>Due Diligence</b><br/>Virtual Data Room]
+        D3[<b>Closing</b><br/>Term Sheet Generator]
+    end
+
+    A1 & A2 & A3 --> B1
+    B1 --> B2 & B3
+    B2 --> C1
+    C1 --> C2
+    C2 --> C3
+    C3 --> D1
+    D1 --> D2
+    D2 --> D3
+
+    %% Styling
+    style A1 fill:#f0f7ff,stroke:#0070f3,stroke-width:2px
+    style A2 fill:#f0f7ff,stroke:#0070f3,stroke-width:2px
+    style A3 fill:#f0f7ff,stroke:#0070f3,stroke-width:2px
+    
+    style B1 fill:#fff7ed,stroke:#f97316,stroke-width:2px
+    style B2 fill:#fff7ed,stroke:#f97316,stroke-width:2px
+    style B3 fill:#fff7ed,stroke:#f97316,stroke-width:2px
+
+    style C1 fill:#f0fdf4,stroke:#22c55e,stroke-width:2px
+    style C2 fill:#f0fdf4,stroke:#22c55e,stroke-width:2px
+    style C3 fill:#f0fdf4,stroke:#22c55e,stroke-width:2px
+
+    style D1 fill:#faf5ff,stroke:#a855f7,stroke-width:2px
+    style D2 fill:#faf5ff,stroke:#a855f7,stroke-width:2px
+    style D3 fill:#faf5ff,stroke:#a855f7,stroke-width:2px
 ```
 
 ---
