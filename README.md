@@ -42,16 +42,17 @@ Discover · Connect · Collaborate · Close Deals
 1. [Overview](#-overview)
 2. [Architecture](#-architecture)
 3. [Methodology](#-methodology)
-4. [Tech Stack](#-tech-stack)
-5. [Project Structure](#-project-structure)
-6. [Features](#-features)
-7. [Getting Started](#-getting-started)
-8. [Environment Variables](#-environment-variables)
-9. [API Reference](#-api-reference)
-10. [Database Models](#-database-models)
-11. [Deployment](#-deployment)
-12. [Docker Setup](#-docker-setup)
-13. [Contributing](#-contributing)
+4. [Workflow](#-workflow)
+5. [Tech Stack](#-tech-stack)
+6. [Project Structure](#-project-structure)
+7. [Features](#-features)
+8. [Getting Started](#-getting-started)
+9. [Environment Variables](#-environment-variables)
+10. [API Reference](#-api-reference)
+11. [Database Models](#-database-models)
+12. [Deployment](#-deployment)
+13. [Docker Setup](#-docker-setup)
+14. [Contributing](#-contributing)
 
 ---
 
@@ -170,6 +171,59 @@ graph TD
     style D1 fill:#faf5ff,stroke:#a855f7,stroke-width:2px
     style D2 fill:#faf5ff,stroke:#a855f7,stroke-width:2px
     style D3 fill:#faf5ff,stroke:#a855f7,stroke-width:2px
+```
+
+---
+
+## 🔄 Workflow
+
+The comprehensive user journey and data flow within the Startup Connect ecosystem, illustrating the transition from onboarding to deal finalization.
+
+```mermaid
+flowchart LR
+    %% Onboarding
+    subgraph Onboarding [1. Onboarding & Security]
+        direction TB
+        A[User Signup] --> B[KYC Verification]
+        B --> C[Profile Optimization]
+    end
+
+    %% AI Pipeline
+    subgraph AI_Pipeline [2. AI Intelligence Pipeline]
+        direction TB
+        C --> D[Embeddings Generation]
+        D --> E[Vector Indexing]
+        E --> F[Compatibility Scoring]
+    end
+
+    %% Engagement
+    subgraph Engagement [3. Discovery & Networking]
+        direction TB
+        F --> G[Smart Discovery]
+        G --> H[Connection Request]
+        H --> I[Socket.io Chat]
+    end
+
+    %% Execution
+    subgraph Execution [4. Deal Execution]
+        direction TB
+        I --> J[Meeting Scheduler]
+        J --> K[Secure VDR Access]
+        K --> L[Term Sheet Generator]
+    end
+
+    %% Connections
+    Onboarding ==> AI_Pipeline
+    AI_Pipeline ==> Engagement
+    Engagement ==> Execution
+
+    %% Styling
+    style Onboarding fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,stroke-dasharray: 5 5
+    style AI_Pipeline fill:#fff7ed,stroke:#f97316,stroke-width:2px,stroke-dasharray: 5 5
+    style Engagement fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,stroke-dasharray: 5 5
+    style Execution fill:#fdf4ff,stroke:#d946ef,stroke-width:2px,stroke-dasharray: 5 5
+    
+    linkStyle default stroke:#64748b,stroke-width:2px
 ```
 
 ---
