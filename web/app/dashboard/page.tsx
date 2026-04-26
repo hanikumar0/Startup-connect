@@ -102,8 +102,8 @@ export default function UnifiedDashboard() {
     }
 
     const displayStats = stats.length > 0 ? stats : [
-        { label: isStartup ? 'PROFILE VIEWS' : 'TOTAL INVESTED', value: isStartup ? '0' : '₹0.0Cr', icon: isStartup ? Activity : Briefcase, tag: isStartup ? 'PORTFOLIO' : 'PORTFOLIO', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-        { label: isStartup ? 'ACTIVE MATCHES' : 'ACTIVE DEALS', value: '0', icon: isStartup ? Target : Zap, tag: 'IN PIPELINE', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: isStartup ? 'TOTAL FUNDING RAISED' : 'TOTAL INVESTED', value: isStartup ? '₹0.0Cr' : '₹0.0Cr', icon: PieChart, tag: isStartup ? 'CAPITAL' : 'PORTFOLIO', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: isStartup ? 'ACTIVE MATCHES' : 'ACTIVE DEALS', value: '0', icon: isStartup ? Target : Zap, tag: isStartup ? 'NETWORK' : 'IN PIPELINE', color: 'text-emerald-600', bg: 'bg-emerald-50' },
         { label: 'NEW MATCHES', value: '0', icon: Users, tag: 'RECENT', color: 'text-blue-600', bg: 'bg-blue-50' },
         { label: 'SCHEDULED', value: '0', icon: Calendar, tag: 'THIS WEEK', color: 'text-purple-600', bg: 'bg-purple-50' },
     ];

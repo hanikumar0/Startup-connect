@@ -226,6 +226,10 @@ flowchart LR
     linkStyle default stroke:#64748b,stroke-width:2px
 ```
 
+<div align="center">
+  <img src="./assets/workflow_diagram.png" alt="Startup Connect Workflow" width="100%" />
+</div>
+
 ---
 
 ## 🛠️ Tech Stack

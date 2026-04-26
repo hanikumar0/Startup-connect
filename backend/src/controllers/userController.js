@@ -201,7 +201,7 @@ export const getDashboardStats = async (req, res) => {
         const userId = req.user.id;
         const user = await User.findById(userId);
 
-        if (user.role === "STARTUP") {
+        if (user.role?.toLowerCase() === "startup") {
             const profile = await StartupProfile.findOne({ userId });
             const matchesCount = await Connection.countDocuments({
                 $or: [{ sender: userId }, { recipient: userId }],
@@ -216,10 +216,10 @@ export const getDashboardStats = async (req, res) => {
             res.status(200).json({
                 success: true,
                 stats: [
-                    { label: "Funding Goal", value: `₹${((profile?.fundingRequired || 0) / 10000000).toFixed(1)}Cr`, icon: "IndianRupee", trend: "Target", color: "text-emerald-600", bg: "bg-emerald-50" },
-                    { label: "Active Matches", value: matchesCount.toString(), icon: "Target", trend: "Verified", color: "text-indigo-600", bg: "bg-indigo-50" },
-                    { label: "Profile Views", value: "0", icon: "Users", trend: "Live", color: "text-blue-600", bg: "bg-blue-50" },
-                    { label: "Meetings", value: meetingsCount.toString(), icon: "Calendar", trend: "Upcoming", color: "text-purple-600", bg: "bg-purple-50" },
+                    { label: "Total Funding Raised", value: `₹${((profile?.fundingRaised || 0) / 10000000).toFixed(1)}Cr`, icon: "PieChart", trend: "Capital", color: "text-indigo-600", bg: "bg-indigo-50" },
+                    { label: "Active Matches", value: matchesCount.toString(), icon: "Target", trend: "Network", color: "text-emerald-600", bg: "bg-emerald-50" },
+                    { label: "New Matches", value: "0", icon: "Users", trend: "Recent", color: "text-blue-600", bg: "bg-blue-50" },
+                    { label: "Scheduled", value: meetingsCount.toString(), icon: "Calendar", trend: "This Week", color: "text-purple-600", bg: "bg-purple-50" },
                 ]
             });
         } else {
